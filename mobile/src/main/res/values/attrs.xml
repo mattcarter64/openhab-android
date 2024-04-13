@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <declare-styleable name="ColorPicker">
-        <attr name="wheel_size" format="integer" />
-        <attr name="pointer_size" format="integer" />
-    </declare-styleable>
-
     <declare-styleable name="WidgetImageView">
         <attr name="fallback" format="reference" />
         <attr name="progressIndicator" format="reference" />
@@ -19,7 +13,7 @@
         </attr>
     </declare-styleable>
 
-    <declare-styleable name="ItemUpdatingPreference">
+    <declare-styleable name="ItemAndTogglePreference">
         <attr name="summaryEnabled" format="string" />
         <attr name="summaryDisabled" format="string" />
         <attr name="iconEnabled" format="integer" />
@@ -35,7 +29,6 @@
         <attr name="chartTheme" format="string" />
         <attr name="transparentChartTheme" format="string" />
         <attr name="valueColors" format="reference" />
-        <attr name="selectedWidgetBackgroundColor" format="color" />
     </declare-styleable>
 
     <declare-styleable name="CustomInputTypePreference">
@@ -51,4 +44,5 @@
     </declare-styleable>
 
     <item name="originalColor" type="id" />
+    <attr name="homeScreenWidgetBackgroundRadius" format="dimension" />
 </resources>

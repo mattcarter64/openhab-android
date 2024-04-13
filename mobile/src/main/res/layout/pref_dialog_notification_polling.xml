@@ -6,7 +6,7 @@
     android:clipToPadding="false"
     android:padding="?attr/dialogPreferredPadding">
 
-    <androidx.appcompat.widget.SwitchCompat
+    <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/enabled"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
@@ -38,7 +38,6 @@
         android:layout_marginTop="48dp" />
 
     <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/hint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/spinner"

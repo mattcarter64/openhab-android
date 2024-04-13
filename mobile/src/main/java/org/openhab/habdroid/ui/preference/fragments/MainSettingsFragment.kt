@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -24,18 +24,18 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.webkit.WebView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.ColorInt
 import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
-import androidx.fragment.app.commit
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
-import androidx.preference.SwitchPreference
-import com.jaredrummler.android.colorpicker.ColorPreferenceCompat
+import androidx.preference.SwitchPreferenceCompat
+import com.google.android.material.color.DynamicColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.openhab.habdroid.R
@@ -67,10 +67,8 @@ import org.openhab.habdroid.util.isInstalled
 import org.openhab.habdroid.util.isTaskerPluginEnabled
 import org.openhab.habdroid.util.parcelable
 
-class MainSettingsFragment : PreferencesActivity.AbstractSettingsFragment(), ConnectionFactory.UpdateListener {
+class MainSettingsFragment : AbstractSettingsFragment(), ConnectionFactory.UpdateListener {
     override val titleResId: Int @StringRes get() = R.string.action_settings
-    @ColorInt
-    var previousColor: Int = 0
 
     private var notificationPollingPref: NotificationPollingPreference? = null
     private var notificationStatusHint: Preference? = null
@@ -114,21 +112,20 @@ class MainSettingsFragment : PreferencesActivity.AbstractSettingsFragment(), Con
         notificationStatusHint = getPreference(PrefKeys.NOTIFICATION_STATUS_HINT)
         val drawerEntriesPrefs = getPreference(PrefKeys.DRAWER_ENTRIES)
         val themePref = getPreference(PrefKeys.THEME)
-        val accentColorPref = getPreference(PrefKeys.ACCENT_COLOR) as ColorPreferenceCompat
-        val clearCachePref = getPreference(PrefKeys.CLEAR_CACHE)
+        val colorSchemePref = getPreference(PrefKeys.COLOR_SCHEME) as ListPreference
         val fullscreenPref = getPreference(PrefKeys.FULLSCREEN)
         val launcherPref = getPreference(PrefKeys.LAUNCHER)
         val iconFormatPref = getPreference(PrefKeys.ICON_FORMAT)
         val ringtonePref = getPreference(PrefKeys.NOTIFICATION_TONE)
         val vibrationPref = getPreference(PrefKeys.NOTIFICATION_VIBRATION)
-        val ringtoneVibrationPref = getPreference(PrefKeys.NOTIFICATION_TONE_VIBRATION)
         val viewLogPref = getPreference(PrefKeys.LOG)
         val screenLockPref = getPreference(PrefKeys.SCREEN_LOCK)
         val tilePref = getPreference(PrefKeys.SUBSCREEN_TILE)
+        val deviceControlPref = getPreference(PrefKeys.SUBSCREEN_DEVICE_CONTROL)
         val crashReporting = getPreference(PrefKeys.CRASH_REPORTING)
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-            val dataSaverPref = getPreference(PrefKeys.DATA_SAVER) as SwitchPreference
+            val dataSaverPref = getPreference(PrefKeys.DATA_SAVER) as SwitchPreferenceCompat
             dataSaverPref.setSwitchTextOff(R.string.data_saver_off_pre_n)
         }
 
@@ -143,7 +140,7 @@ class MainSettingsFragment : PreferencesActivity.AbstractSettingsFragment(), Con
                 getString(R.string.settings_server_default_name, nextServerId)
             }
             val f = ServerEditorFragment.newInstance(
-                ServerConfiguration(nextServerId, nextName, null, null, null, null, null, false)
+                ServerConfiguration(nextServerId, nextName, null, null, null, null, null, false, null)
             )
             parentActivity.openSubScreen(f)
             true
@@ -183,21 +180,22 @@ class MainSettingsFragment : PreferencesActivity.AbstractSettingsFragment(), Con
             true
         }
 
-        previousColor = prefs.getInt(accentColorPref.key, 0)
-        accentColorPref.setOnPreferenceChangeListener { _, newValue ->
-            parentFragmentManager.findFragmentByTag(accentColorPref.fragmentTag)?.let { dialog ->
-                parentFragmentManager.commit(allowStateLoss = true) {
-                    remove(dialog)
-                }
-            }
-            if (previousColor != newValue) {
-                parentActivity.handleThemeChange()
-            }
+        if (DynamicColors.isDynamicColorAvailable()) {
+            colorSchemePref.entries = resources.getStringArray(R.array.colorSchemeNamesDynamic)
+            colorSchemePref.entryValues = resources.getStringArray(R.array.colorSchemeValuesDynamic)
+        }
+        colorSchemePref.setOnPreferenceChangeListener { _, _ ->
+            parentActivity.handleThemeChange()
             true
         }
 
-        clearCachePref.setOnPreferenceClickListener { pref ->
-            clearImageCache(pref.context)
+        getPreference(PrefKeys.SHOW_ICONS).setOnPreferenceChangeListener { _, _ ->
+            parentActivity.addResultFlag(PreferencesActivity.RESULT_EXTRA_SHOW_ICONS_CHANGED)
+            true
+        }
+
+        getPreference(PrefKeys.CLEAR_CACHE).setOnPreferenceClickListener { pref ->
+            clearCaches(pref.context)
             true
         }
 
@@ -241,7 +239,7 @@ class MainSettingsFragment : PreferencesActivity.AbstractSettingsFragment(), Con
             preferenceScreen.removePreferenceRecursively(PrefKeys.NOTIFICATION_TONE)
             preferenceScreen.removePreferenceRecursively(PrefKeys.NOTIFICATION_VIBRATION)
 
-            ringtoneVibrationPref.setOnPreferenceClickListener { pref ->
+            getPreference(PrefKeys.NOTIFICATION_TONE_VIBRATION).setOnPreferenceClickListener { pref ->
                 val i = Intent(Settings.ACTION_SETTINGS).apply {
                     action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
                     putExtra(Settings.EXTRA_APP_PACKAGE, pref.context.packageName)
@@ -288,6 +286,15 @@ class MainSettingsFragment : PreferencesActivity.AbstractSettingsFragment(), Con
             preferenceScreen.removePreferenceRecursively(PrefKeys.SUBSCREEN_TILE)
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            deviceControlPref.setOnPreferenceClickListener {
+                parentActivity.openSubScreen(DeviceControlFragment())
+                false
+            }
+        } else {
+            preferenceScreen.removePreferenceRecursively(PrefKeys.SUBSCREEN_DEVICE_CONTROL)
+        }
+
         val flags = activity
             ?.intent
             ?.parcelable<ServerProperties>(PreferencesActivity.START_EXTRA_SERVER_PROPERTIES)
@@ -301,7 +308,7 @@ class MainSettingsFragment : PreferencesActivity.AbstractSettingsFragment(), Con
         } else {
             iconFormatPref.setOnPreferenceChangeListener { pref, _ ->
                 val context = pref.context
-                clearImageCache(context)
+                clearCaches(context)
                 ItemUpdateWidget.updateAllWidgets(context)
                 true
             }
@@ -342,7 +349,8 @@ class MainSettingsFragment : PreferencesActivity.AbstractSettingsFragment(), Con
         }
     }
 
-    private fun clearImageCache(context: Context) {
+    private fun clearCaches(context: Context) {
+        WebView(context).clearCache(true)
         // Get launch intent for application
         val restartIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
         restartIntent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -350,7 +358,7 @@ class MainSettingsFragment : PreferencesActivity.AbstractSettingsFragment(), Con
         activity?.finish()
         CacheManager.getInstance(context).clearCache(true)
         // Start launch activity
-        startActivity(restartIntent)
+        restartIntent?.let { startActivity(it) }
     }
 
     private fun updateNotificationStatusSummaries() {

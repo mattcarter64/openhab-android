@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,24 +22,19 @@ import android.os.Bundle
 import android.service.quicksettings.TileService
 import android.view.MenuItem
 import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
-import androidx.annotation.VisibleForTesting
 import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
-import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
-import java.util.BitSet
 import org.openhab.habdroid.R
 import org.openhab.habdroid.background.tiles.AbstractTileService
 import org.openhab.habdroid.ui.AbstractBaseActivity
+import org.openhab.habdroid.ui.preference.fragments.AbstractSettingsFragment
 import org.openhab.habdroid.ui.preference.fragments.MainSettingsFragment
 import org.openhab.habdroid.ui.preference.fragments.TileOverviewFragment
 import org.openhab.habdroid.ui.preference.fragments.TileSettingsFragment
 import org.openhab.habdroid.ui.preference.fragments.WidgetSettingsFragment
-import org.openhab.habdroid.util.getSecretPrefs
 import org.openhab.habdroid.util.parcelable
 
 /**
@@ -53,7 +48,6 @@ class PreferencesActivity : AbstractBaseActivity() {
 
         setContentView(R.layout.activity_prefs)
 
-        setSupportActionBar(findViewById(R.id.openhab_toolbar))
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         if (savedInstanceState == null) {
@@ -123,64 +117,6 @@ class PreferencesActivity : AbstractBaseActivity() {
         }
     }
 
-    @VisibleForTesting
-    abstract class AbstractSettingsFragment : PreferenceFragmentCompat() {
-        @get:StringRes
-        protected abstract val titleResId: Int
-
-        protected val parentActivity get() = activity as PreferencesActivity
-        protected val prefs get() = preferenceScreen.sharedPreferences!!
-        protected val secretPrefs get() = requireContext().getSecretPrefs()
-
-        override fun onStart() {
-            super.onStart()
-            parentActivity.supportActionBar?.setTitle(titleResId)
-        }
-
-        override fun onDisplayPreferenceDialog(preference: Preference) {
-            val showDialog: (DialogFragment) -> Unit = { fragment ->
-                @Suppress("DEPRECATION") // TODO: Replace deprecated function
-                fragment.setTargetFragment(this, 0)
-                fragment.show(parentFragmentManager, "SettingsFragment.DIALOG:${preference.key}")
-            }
-            if (preference is CustomDialogPreference) {
-                showDialog(preference.createDialog())
-            } else {
-                super.onDisplayPreferenceDialog(preference)
-            }
-        }
-
-        companion object {
-            /**
-             * Password is considered strong when it is at least 8 chars long and contains 3 from those
-             * 4 categories:
-             * * lowercase
-             * * uppercase
-             * * numerics
-             * * other
-             * @param password
-             */
-            @VisibleForTesting
-            fun isWeakPassword(password: String?): Boolean {
-                if (password == null || password.length < 8) {
-                    return true
-                }
-                val groups = BitSet()
-                password.forEach { c ->
-                    groups.set(
-                        when {
-                            Character.isLetter(c) && Character.isLowerCase(c) -> 0
-                            Character.isLetter(c) && Character.isUpperCase(c) -> 1
-                            Character.isDigit(c) -> 2
-                            else -> 3
-                        }
-                    )
-                }
-                return groups.cardinality() < 3
-            }
-        }
-    }
-
     class ConfirmationDialogFragment : DialogFragment() {
         interface Callback {
             fun onConfirmed(tag: String?)
@@ -241,6 +177,7 @@ class PreferencesActivity : AbstractBaseActivity() {
         const val RESULT_EXTRA_THEME_CHANGED = "theme_changed"
         const val RESULT_EXTRA_SITEMAP_CLEARED = "sitemap_cleared"
         const val RESULT_EXTRA_SITEMAP_DRAWER_CHANGED = "sitemap_drawer_changed"
+        const val RESULT_EXTRA_SHOW_ICONS_CHANGED = "show_icons_changed"
         const val START_EXTRA_SERVER_PROPERTIES = "server_properties"
         const val ITEM_UPDATE_WIDGET_ITEM = "item"
         const val ITEM_UPDATE_WIDGET_COMMAND = "state"
@@ -248,7 +185,6 @@ class PreferencesActivity : AbstractBaseActivity() {
         const val ITEM_UPDATE_WIDGET_WIDGET_LABEL = "widgetLabel"
         const val ITEM_UPDATE_WIDGET_MAPPED_STATE = "mappedState"
         const val ITEM_UPDATE_WIDGET_ICON = "icon"
-        const val ITEM_UPDATE_WIDGET_THEME = "theme"
         const val ITEM_UPDATE_WIDGET_SHOW_STATE = "show_state"
         private const val STATE_KEY_RESULT = "result"
 

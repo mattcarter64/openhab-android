@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -57,6 +57,7 @@ class SuggestedCommandsFactory(private val context: Context, private val showUnd
     }
 
     private fun fill(item: Item, suggestedCommands: SuggestedCommands, forItemUpdate: Boolean) = when {
+        item.readOnly -> {}
         item.isOfTypeOrGroupType(Item.Type.Color) -> {
             addOnOffCommands(suggestedCommands)
             addIncreaseDecreaseCommands(suggestedCommands)

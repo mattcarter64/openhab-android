@@ -14,19 +14,16 @@
     <string name="mainmenu_openhab_sitemaps">Sitemaps</string>
     <string name="mainmenu_openhab_preferences">Configuración</string>
     <string name="mainmenu_openhab_habpanel">HABPanel</string>
-    <string name="mainmenu_openhab_habpanel_on_server">HABPanel (%s)</string>
-    <string name="mainmenu_openhab_oh3_ui">openHAB 3 UI</string>
-    <string name="mainmenu_openhab_oh3_ui_on_server">openHAB 3 UI (%s)</string>
+    <string name="mainmenu_openhab_main_ui">Interfaz principal de usuario</string>
     <string name="mainmenu_openhab_frontail">Frontail</string>
-    <string name="mainmenu_openhab_frontail_on_server">Frontail (%s)</string>
+    <!-- %1$s: Name of a UI, %2$s: Server name. Example: HABPanel (House). Use the source string as translation if the punctuation rules are the same as in English. -->
+    <string name="ui_on_server">%1$s (%2$s)</string>
     <string name="app_notifications">Notificaciones</string>
-    <string name="app_notifications_on_server">Notificaciones (%s)</string>
     <string name="habpanel_error">Error al cargar HABPanel</string>
-    <string name="oh3_ui_error">Se ha producido un error al cargar la interfaz de usuario (UI) de openHAB 3</string>
+    <string name="main_ui_error">Se ha producido un error al cargar la interfaz principal de usuario</string>
     <string name="frontail_error">Se ha producido un error al cargar Frontail. Tenga en cuenta que no está disponible a través de openHAB Cloud.</string>
-    <string name="frontail_pref_summary">Frontail debe ejecutarse en su puerto por defecto 9001. Puede venir incluido en openHABian o puede instalarse manualmente.</string>
     <string name="mainmenu_openhab_selectsitemap">Seleccionar el Sitemap por defecto</string>
-    <string name="mainmenu_openhab_clearcache">Borrar la caché de imágenes</string>
+    <string name="settings_clear_caches">Limpiar caché</string>
     <!-- App settings strings -->
     <string name="settings_connection_title">Conexión</string>
     <string name="settings_display_title">Pantalla</string>
@@ -51,10 +48,14 @@
     <string name="start_page_title">Página de inicio</string>
     <string name="drawer_entries">Entradas de menú lateral</string>
     <string name="settings_openhab_theme">Tema</string>
-    <string name="settings_accent_color">Color destacado</string>
-    <string name="settings_select_a_color">Seleccione un color</string>
     <string name="settings_openhab_fullscreen">Pantalla completa</string>
-    <string name="settings_set_as_launcher">Permitir que la aplicación se use como lanzador</string>
+    <string name="settings_set_as_launcher_title">Registrar como lanzador</string>
+    <string name="settings_set_as_launcher_summary">Permitir que la aplicación se utilice como lanzador. Después de activar, la aplicación todavía necesita ser seleccionada como lanzador predeterminado para que tenga efecto.</string>
+    <string name="settings_sitemap_compact_mode_title">Modo compacto</string>
+    <string name="settings_sitemap_compact_mode_off">Utilizar una disposición de dos líneas para los widgets de Sitemap, lo que hace que los controles sean más grandes y por lo tanto más fáciles de usar, pero requiere más desplazamiento para listas más largas</string>
+    <string name="settings_sitemap_compact_mode_on">Utilizar diseño de una línea para widgets de Sitemap, el cual muestra tantos widgets como sea posible en la pantalla, pero reduce el tamaño de los controles</string>
+    <string name="settings_color_scheme_title">Esquema de colores</string>
+    <string name="settings_show_icons">Mostrar iconos</string>
     <string name="settings_openhab_icon_format">Formato de los iconos</string>
     <string name="settings_openhab_icon_format_png">Mapa de bits</string>
     <string name="settings_openhab_icon_format_svg">Vector</string>
@@ -73,6 +74,9 @@
     <string name="settings_no_default_sitemap">No se ha seleccionado ningún Sitemap por defecto</string>
     <!-- %1$s: Default Sitemap label -->
     <string name="settings_current_default_sitemap">Sitemap predeterminado actual: %1$s</string>
+    <string name="settings_ui_command_item">Item del comando de interfaz de usuario</string>
+    <string name="settings_ui_command_item_summary_on">El Sitemap puede ser controlado mediante el Item \"%s\"</string>
+    <string name="settings_ui_command_item_summary_off">El Sitemap no puede ser controlado mediante un Item</string>
     <string name="settings_openhab_alt_connection">Remota</string>
     <string name="settings_openhab_connection">Local</string>
     <string name="settings_ringtone">Tono de llamada</string>
@@ -84,6 +88,9 @@
     <string name="settings_notification_vibration_long">Larga</string>
     <string name="settings_notification_vibration_twice">Dos veces</string>
     <string name="settings_notification_ringtone_vibration">Tono de llamada &amp; Vibración</string>
+    <string name="settings_notification_reset_settings">Restablecer categorías</string>
+    <string name="settings_notification_reset_settings_confirm">¿Desea eliminar todas las categorías de notificaciones? Se volverán a crear cuando llegue una nueva notificación para esta categoría.</string>
+    <string name="settings_notification_hint">La importancia de las notificaciones recibidas de myopenHAB.org está definida mediante la categoría de la notificación. Puede configurar diferentes notificaciones por cada categoría.</string>
     <string name="settings_connection_summary">Conectado a %s</string>
     <!-- %1$s: URL, %2$s: Reason why connection is insecure -->
     <string name="settings_insecure_connection_summary">Conectado a %1$s: %2$s de forma no segura</string>
@@ -120,7 +127,13 @@
     <string name="settings_multi_server_wifi_ssid_location_off">No se puede leer el nombre de la Wi-Fi: La ubicación está desactivada</string>
     <string name="setting_crash_reporting_title">Reporte de errores</string>
     <string name="setting_crash_reporting_summary">Enviar informes de errores para apoyar el desarrollo de la aplicación</string>
+    <string name="device_control_subtitle_location">Ubicación</string>
+    <string name="device_control_subtitle_equipment">Equipamiento</string>
+    <string name="device_control_subtitle_location_equipment">Ubicación y equipamiento</string>
     <string name="device_control_subtitle_item_name">Nombre del Item</string>
+    <string name="device_control">Control de dispositivos Android</string>
+    <string name="device_control_subtitle">Descripción en los mosaicos</string>
+    <string name="device_control_hint">Dependiendo de tu versión de Android, estos azulejos se encuentran en el menú de pulsación larga del botón de encendido o junto a los azulejos rápidos</string>
     <!-- App messages strings -->
     <string name="title_voice_widget">Comandos de voz</string>
     <string name="voice_command">Comando de voz</string>
@@ -165,8 +178,10 @@
     <string name="error_certificate_wrong_host">El certificado no es válido para %s</string>
     <string name="error_http_to_https_port">Final inesperado de secuencia. ¿Está Ud. tratando de conectar a un puerto HTTPS por HTTP?</string>
     <string name="webview_ssl">Esta aplicación no soporta actualmente certificados SSL auto-firmados para widgets de Webview</string>
+    <string name="webview_snackbar_permissions_missing">La página requiere permisos adicionales para funcionar correctamente</string>
     <!-- The following strings are referenced via reflection in Context.getHumanReadableErrorMessage -->
-    <string name="error_http_code_401" tools:keep="@string/error_http_code_401">Autenticación fallida. Por favor, compruebe el nombre de usuario y la contraseña configurados respectivamente al certificado de cliente SSL proporcionado (código HTTP %d).</string>
+    <string name="error_http_code_401" tools:keep="@string/error_http_code_401">Error de autenticación. Por favor, compruebe el nombre de usuario y contraseña configurados, respectivamente, el certificado de cliente SSL proporcionado (código HTTP %d). Asegúrese de que el servidor tiene habilitada la autenticación básica.</string>
+    <string name="error_http_code_404" tools:keep="@string/error_http_code_404">No encontrado (código HTTP %d)</string>
     <string name="error_http_code_414" tools:keep="@string/error_http_code_414">La URL es demasiado larga. Por favor, use la dirección IP o una URL más corta (código HTTP %d).</string>
     <string name="error_http_code_426" tools:keep="@string/error_http_code_426">Se requiere HTTPS. Por favor, cambie la URL (código HTTP %d).</string>
     <!-- Nginx specific codes, but since it is the recommended reverse proxy, we should check for them: https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#nginx -->
@@ -274,6 +289,7 @@
     <string name="settings_gadgetbridge_summary_off">No enviar acciones de dispositivo Gadgetbridge</string>
     <string name="settings_background_tasks_permission_hint_pre_r">Esta característica requiere permisos adicionales para funcionar. Tras activarla, se le pedirá que apruebe dichos permisos.</string>
     <string name="settings_background_tasks_permission_hint">Esta característica requiere permisos adicionales para funcionar. Después de activarla, se le pedirá que apruebe dichos permisos. Por favor, asegúrese de aprobar los permisos también para el uso en segundo plano, ya que las actualizaciones de los Item también suceden cuando la aplicación funciona en segundo plano.</string>
+    <string name="settings_permission_denied">Algunas características han sido deshabilitadas debido a la falta de permisos</string>
     <string name="settings_background_tasks_permission_denied_background_location">Algunas tareas en segundo plano requieren que el acceso a la ubicación se establezca a \"%s\" en la configuración de Android</string>
     <string name="settings_background_tasks_permission_allow">Permitir</string>
     <string name="settings_location_permissions_required">Esta aplicación recopila datos de ubicación necesarios para la función \"Enviar nombre Wi-Fi al servidor\" y \"Selección de servidor basada en Wi-Fi\", incluso cuando la aplicación está cerrada o no está en uso. Tenga en cuenta que estos datos sólo se envían a los servidores que ha configurado.</string>
@@ -352,6 +368,9 @@
     <string name="theme_name_system">Igual que el sistema</string>
     <string name="theme_name_battery_saver">Modo oscuro en modo de ahorro de batería</string>
     <string name="theme_name_black">Oscuro</string>
+    <string name="color_scheme_name_default">Predeterminado</string>
+    <string name="color_scheme_name_basicui">Basic UI</string>
+    <string name="color_scheme_name_dynamic">Dinámico</string>
     <!-- Chart -->
     <string name="chart_activity_title">Gráfica</string>
     <string name="chart_activity_hide_legend">Ocultar leyenda</string>
@@ -414,9 +433,6 @@
     <string name="about_rate_this_app">Valorar esta aplicación</string>
     <string name="settings_debug_messages_title">Mostrar información para la solución de problemas</string>
     <string name="settings_troubleshooting_title">Solución de problemas</string>
-    <string name="set">Establecer</string>
-    <string name="cancel">Cancelar</string>
-    <string name="close">Cerrar</string>
     <string name="undo">Deshacer</string>
     <string name="try_again_button">Vuelve a intentarlo</string>
     <string name="enable_wifi_button">Activar Wi-Fi</string>
@@ -448,6 +464,10 @@
     <string name="content_description_open_roller_shutter">Abrir la persiana enrollable</string>
     <string name="content_description_stop_roller_shutter">Parar la persiana enrollable</string>
     <string name="content_description_close_roller_shutter">Cerrar la persiana enrollable</string>
+    <string name="content_description_player_previous">Retroceder hasta la pista anterior</string>
+    <string name="content_description_player_next">Avanzar hasta la pista siguiente</string>
+    <string name="content_description_player_pause">Pausar reproducción</string>
+    <string name="content_description_player_play">Iniciar reproducción</string>
     <string name="content_description_open_color_wheel">Abrir la rueda de color</string>
     <string name="content_description_color_up">Encender, o mantener para aumentar el brillo</string>
     <string name="content_description_color_down">Apagar, o mantener para disminuir el brillo</string>
@@ -495,13 +515,13 @@
     <string name="press_back_to_exit">Presione atrás de nuevo para salir</string>
     <!-- Item update widget -->
     <string name="item_update_widget_title">Control del Item</string>
-    <string name="item_update_widget_content_description">Widget para cambiar el estado del Item</string>
+    <string name="item_update_widget_content_description">Cambiar o leer el estado de un Item</string>
     <string name="item_update_widget_content_description_edit">Editar widget</string>
     <string name="item_update_widget">Widget</string>
     <!-- %1$s: Item label, %2$s: Action, e.g. "Lights: On". Use the source string as translation if the punctuation rules are the same as in English. -->
     <string name="item_update_widget_text">%1$s: %2$s</string>
-    <string name="item_update_widget_item_picker_title">Seleccione un Item</string>
-    <string name="widget_show_state">Añadir estado actual al nombre</string>
+    <!-- Used in the widget preview -->
+    <string name="item_update_widget_preview_text">Garaje abierto</string>
     <string name="widget_show_state_summary">El estado se actualiza en el calendario, el cual se puede ajustar en la configuración de \"Enviar información del dispositivo al servidor\"</string>
     <string name="widget_no_command">No enviar un comando</string>
     <string name="error_getting_state">Error al cargar el estado</string>
@@ -544,6 +564,7 @@
     <string name="item_update_error_no_connection">Sin conexión</string>
     <string name="item_update_error_couldnt_get_item_type">No se pudo obtener el tipo del Item</string>
     <string name="create_home_screen_widget_title">Crear widget</string>
+    <string name="create_home_screen_widget_no_command">Mostrar estado actual</string>
     <string name="create_home_screen_widget_not_supported">Por favor, vaya al menú de widgets en su pantalla de inicio y cree un widget desde allí</string>
     <!-- Data saver -->
     <string name="data_saver_title">Economizador de datos</string>
@@ -558,6 +579,7 @@
     <string name="widget_type_video">Vídeo</string>
     <string name="widget_type_mapview">Mapa</string>
     <string name="widget_type_chart">Gráfica</string>
+    <string name="widget_type_color">Color</string>
     <!-- Tiles -->
     <string name="tile">Baldosa</string>
     <string name="tiles_for_quick_settings">Baldosas para ajustes rápidos</string>
@@ -636,10 +658,92 @@
     <string name="tile_icon_lamp_outdoor">Lámpara exterior</string>
     <!-- Tile icon values -->
     <!-- Item tag type labels -->
+    <string name="item_tag_location_apartment">Apartamento</string>
+    <string name="item_tag_location_attic">Ático</string>
+    <string name="item_tag_location_basement">Sótano</string>
+    <string name="item_tag_location_bathroom">Baño</string>
+    <string name="item_tag_location_bedroom">Dormitorio</string>
+    <string name="item_tag_location_boilerroom">Sala de caldera</string>
+    <string name="item_tag_location_building">Edificio</string>
+    <string name="item_tag_location_carport">Carretera</string>
+    <string name="item_tag_location_cellar">Bodega</string>
+    <string name="item_tag_location_corridor">Pasillo</string>
+    <string name="item_tag_location_diningroom">Comedor</string>
+    <string name="item_tag_location_driveway">Interconexión</string>
+    <string name="item_tag_location_entry">Entrada</string>
+    <string name="item_tag_location_familyroom">Habitación familiar</string>
+    <string name="item_tag_location_firstfloor">Primer piso</string>
+    <string name="item_tag_location_floor">Piso</string>
     <string name="item_tag_location_garage">Garaje</string>
+    <string name="item_tag_location_garden">Jardín</string>
+    <string name="item_tag_location_groundfloor">Planta baja</string>
+    <string name="item_tag_location_guestroom">Habitación de invitados</string>
     <string name="item_tag_location_house">Casa</string>
+    <string name="item_tag_location_indoor">Interior</string>
+    <string name="item_tag_location_kitchen">Cocina</string>
+    <string name="item_tag_location_laundryroom">Lavandería</string>
+    <string name="item_tag_location_livingroom">Sala de estar</string>
+    <string name="item_tag_location_office">Oficina</string>
+    <string name="item_tag_location_outdoor">Exterior</string>
+    <string name="item_tag_location_patio">Patio</string>
+    <string name="item_tag_location_porch">Porche</string>
+    <string name="item_tag_location_room">Habitación</string>
+    <string name="item_tag_location_secondfloor">Segundo piso</string>
+    <string name="item_tag_location_shed">Cobertizo</string>
+    <string name="item_tag_location_summerhouse">Casa de verano</string>
+    <string name="item_tag_location_terrace">Terraza</string>
+    <string name="item_tag_location_thirdfloor">Tercer piso</string>
+    <string name="item_tag_location_veranda">Veranda</string>
+    <string name="item_tag_equipment_alarmsystem">Sistema de alarma</string>
+    <string name="item_tag_equipment_backdoor">Puerta trasera</string>
     <string name="item_tag_equipment_battery">Batería</string>
+    <string name="item_tag_equipment_blinds">Persianas</string>
+    <string name="item_tag_equipment_boiler">Caldera</string>
     <string name="item_tag_equipment_camera">Cámara</string>
+    <string name="item_tag_equipment_car">Coche</string>
+    <string name="item_tag_equipment_ceilingfan">Ventilador de techo</string>
+    <string name="item_tag_equipment_cellardoor">Puerta de bodega</string>
+    <string name="item_tag_equipment_cleaningrobot">Robot de limpieza</string>
+    <string name="item_tag_equipment_dishwasher">Lavavajillas</string>
+    <string name="item_tag_equipment_door">Puerta</string>
+    <string name="item_tag_equipment_doorbell">Timbre</string>
+    <string name="item_tag_equipment_dryer">Secador</string>
     <string name="item_tag_equipment_fan">Ventilador</string>
+    <string name="item_tag_equipment_freezer">Congelador</string>
+    <string name="item_tag_equipment_frontdoor">Puerta frontal</string>
+    <string name="item_tag_equipment_garagedoor">Puerta del garaje</string>
+    <string name="item_tag_equipment_gate">Puerta</string>
+    <string name="item_tag_equipment_hvac">Climatización</string>
+    <string name="item_tag_equipment_innerdoor">Puerta interior</string>
+    <string name="item_tag_equipment_inverter">Inverter</string>
+    <string name="item_tag_equipment_kitchenhood">Campanas extractoras</string>
+    <string name="item_tag_equipment_lawnmower">Cortacésped</string>
+    <string name="item_tag_equipment_lightbulb">Bombilla</string>
     <string name="item_tag_equipment_lock">Candado</string>
+    <string name="item_tag_equipment_motiondetector">Detector de movimiento</string>
+    <string name="item_tag_equipment_networkappliance">Dispositivos de red</string>
+    <string name="item_tag_equipment_oven">Horno</string>
+    <string name="item_tag_equipment_poweroutlet">Enchufe</string>
+    <string name="item_tag_equipment_projector">Proyector</string>
+    <string name="item_tag_equipment_pump">Bomba</string>
+    <string name="item_tag_equipment_radiatorcontrol">Control del radiador</string>
+    <string name="item_tag_equipment_receiver">Receptor</string>
+    <string name="item_tag_equipment_refrigerator">Refrigerador</string>
+    <string name="item_tag_equipment_remotecontrol">Control remoto</string>
+    <string name="item_tag_equipment_screen">Pantalla</string>
+    <string name="item_tag_equipment_sensor">Sensor</string>
+    <string name="item_tag_equipment_sidedoor">Puerta lateral</string>
+    <string name="item_tag_equipment_siren">Sirena</string>
+    <string name="item_tag_equipment_smartphone">Móvil</string>
+    <string name="item_tag_equipment_smokedetector">Detector de humo</string>
+    <string name="item_tag_equipment_speaker">Altavoz</string>
+    <string name="item_tag_equipment_television">Televisión</string>
+    <string name="item_tag_equipment_valve">Válvula</string>
+    <string name="item_tag_equipment_voiceassistant">Asistente de voz</string>
+    <string name="item_tag_equipment_wallswitch">Interruptor de pared</string>
+    <string name="item_tag_equipment_washingmachine">Lavadora</string>
+    <string name="item_tag_equipment_weatherservice">Servicio meteorológico</string>
+    <string name="item_tag_equipment_webservice">Servicio web</string>
+    <string name="item_tag_equipment_whitegood">Bien blanco</string>
+    <string name="item_tag_equipment_window">Ventana</string>
 </resources>

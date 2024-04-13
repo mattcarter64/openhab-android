@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -54,6 +54,7 @@ import org.openhab.habdroid.util.DeviceControlSubtitleMode
 import org.openhab.habdroid.util.HttpClient
 import org.openhab.habdroid.util.ItemClient
 import org.openhab.habdroid.util.PendingIntent_Immutable
+import org.openhab.habdroid.util.PrefKeys
 import org.openhab.habdroid.util.getDeviceControlSubtitle
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.getPrimaryServerId
@@ -96,7 +97,12 @@ class ItemsControlsProviderService : ControlsProviderService() {
                     }
                     val topic = event.getString("topic")
                     val topicPath = topic.split('/')
-                    if (topicPath.size != 4) {
+                    // Possible formats:
+                    // - openhab/items/<item>/statechanged
+                    // - openhab/items/<group item>/<item>/statechanged
+                    // When an update for a group is sent, there's also one for the individual item.
+                    // Therefore always take the element on index two.
+                    if (topicPath.size !in 4..5) {
                         throw JSONException("Unexpected topic path $topic")
                     }
                     val item = allItems[topicPath[2]]
@@ -142,7 +148,14 @@ class ItemsControlsProviderService : ControlsProviderService() {
             return ControlAction.RESPONSE_FAIL
         }
         val state = when (action) {
-            is BooleanAction -> if (action.newState) "ON" else "OFF"
+            is BooleanAction -> {
+                val item = ItemClient.loadItem(connection, itemName) ?: return ControlAction.RESPONSE_FAIL
+                if (item.isOfTypeOrGroupType(Item.Type.Player)) {
+                    if (action.newState) "PLAY" else "PAUSE"
+                } else {
+                    if (action.newState) "ON" else "OFF"
+                }
+            }
             is FloatAction -> action.newValue.roundToInt().toString()
             else -> {
                 Log.e(TAG, "Unsupported action $action")
@@ -164,7 +177,7 @@ class ItemsControlsProviderService : ControlsProviderService() {
         private val TAG = ItemsControlsProviderService::class.java.simpleName
     }
 
-    private class ItemControlFactory constructor(
+    private class ItemControlFactory(
         private val context: Context,
         private val allItems: Map<String, Item>,
         private val stateful: Boolean
@@ -172,6 +185,7 @@ class ItemsControlsProviderService : ControlsProviderService() {
         private val serverName: String
         private val primaryServerId: Int
         private val subtitleMode: DeviceControlSubtitleMode
+        private val authRequired: Boolean
 
         init {
             val prefs = context.getPrefs()
@@ -180,32 +194,13 @@ class ItemsControlsProviderService : ControlsProviderService() {
                 ?.name
                 .orDefaultIfEmpty(context.getString(R.string.app_name))
             subtitleMode = prefs.getDeviceControlSubtitle(context)
+            authRequired = prefs.getBoolean(PrefKeys.DEVICE_CONTROL_AUTH_REQUIRED, true)
         }
 
         fun maybeCreateControl(item: Item): Control? {
-            if (item.label.isNullOrEmpty() || item.readOnly) return null
-            val controlTemplate = if (item.options != null) {
-                // Open app when clicking on tile
-                ControlTemplate.getNoTemplateObject()
-            } else {
-                when (item.type) {
-                    Item.Type.Switch -> ToggleTemplate(
-                        item.name,
-                        ControlButton(item.state?.asBoolean ?: false, context.getString(R.string.nfc_action_toggle))
-                    )
-                    Item.Type.Dimmer, Item.Type.Color -> ToggleRangeTemplate(
-                        "${item.name}_toggle",
-                        ControlButton(item.state?.asBoolean ?: false, context.getString(R.string.nfc_action_toggle)),
-                        createRangeTemplate(item, "%.0f%%")
-                    )
-                    Item.Type.Rollershutter -> createRangeTemplate(item, "%.0f%%")
-                    Item.Type.Number -> createRangeTemplate(
-                        item,
-                        item.state?.asNumber?.unit?.let { "%.0f $it" } ?: "%.0f"
-                    )
-                    else -> return null
-                }
-            }
+            val label = item.label
+            if (label.isNullOrEmpty()) return null
+            val controlTemplate = getControlTemplate(item) ?: return null
 
             val location = getItemTagLabel(item, Item.Tag.Location).orEmpty()
             val equipment = getItemTagLabel(item, Item.Tag.Equipment).orEmpty()
@@ -222,26 +217,7 @@ class ItemsControlsProviderService : ControlsProviderService() {
                 else -> location
             }
 
-            val (intent, requestCode) = when {
-                item.options != null -> {
-                    val intent = Intent(context, SelectionItemActivity::class.java).apply {
-                        putExtra(SelectionItemActivity.EXTRA_ITEM, item)
-                    }
-                    Pair(intent, item.hashCode())
-                }
-                item.isOfTypeOrGroupType(Item.Type.Color) -> {
-                    val intent = Intent(context, ColorItemActivity::class.java).apply {
-                        putExtra(ColorItemActivity.EXTRA_ITEM, item)
-                    }
-                    Pair(intent, item.hashCode())
-                }
-                else -> {
-                    val intent = Intent(context, MainActivity::class.java).apply {
-                        putExtra(MainActivity.EXTRA_SERVER_ID, primaryServerId)
-                    }
-                    Pair(intent, primaryServerId)
-                }
-            }
+            val (intent, requestCode) = getIntent(item)
 
             val pi = PendingIntent.getActivity(
                 context,
@@ -250,29 +226,116 @@ class ItemsControlsProviderService : ControlsProviderService() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent_Immutable
             )
             val statefulControl = Control.StatefulBuilder(item.name, pi)
-                .setTitle(item.label)
+                .setTitle(label)
                 .setSubtitle(subtitle)
                 .setZone(zone)
                 .setStructure(serverName)
                 .setDeviceType(item.getDeviceType())
                 .setControlTemplate(controlTemplate)
                 .setStatus(Control.STATUS_OK)
-                .build()
+
+            getStatusText(item, controlTemplate)?.let {
+                statefulControl.setStatusText(it)
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                statefulControl.setAuthRequired(authRequired)
+            }
 
             return if (stateful) {
-                statefulControl
+                statefulControl.build()
             } else {
-                Control.StatelessBuilder(statefulControl).build()
+                Control.StatelessBuilder(statefulControl.build()).build()
+            }
+        }
+
+        private fun getStatusText(item: Item, controlTemplate: ControlTemplate): String? {
+            val typesWithState = listOf(
+                ControlTemplate.TYPE_ERROR,
+                ControlTemplate.TYPE_NO_TEMPLATE,
+                ControlTemplate.TYPE_STATELESS
+            )
+
+            return when {
+                controlTemplate.templateType !in typesWithState -> null
+                !item.options.isNullOrEmpty() -> {
+                    item.options
+                        .firstOrNull { labeledValue -> labeledValue.value == item.state?.asString }
+                        ?.label
+                }
+                item.isOfTypeOrGroupType(Item.Type.Number) -> item.state?.asNumber?.toString()
+                else -> item.state?.asString
+            }
+        }
+
+        private fun getIntent(item: Item) = when {
+            !item.readOnly && item.options != null -> {
+                val intent = Intent(context, SelectionItemActivity::class.java).apply {
+                    putExtra(SelectionItemActivity.EXTRA_ITEM, item)
+                }
+                Pair(intent, item.hashCode())
+            }
+            !item.readOnly && item.isOfTypeOrGroupType(Item.Type.Color) -> {
+                val intent = Intent(context, ColorItemActivity::class.java).apply {
+                    putExtra(ColorItemActivity.EXTRA_ITEM, item)
+                }
+                Pair(intent, item.hashCode())
+            }
+            item.linkToMore != null -> {
+                val intent = Intent(context, MainActivity::class.java).apply {
+                    putExtra(MainActivity.EXTRA_LINK, item.linkToMore)
+                    putExtra(MainActivity.EXTRA_SERVER_ID, primaryServerId)
+                }
+                Pair(intent, item.hashCode())
+            }
+            else -> {
+                val intent = Intent(context, MainActivity::class.java).apply {
+                    putExtra(MainActivity.EXTRA_SERVER_ID, primaryServerId)
+                }
+                Pair(intent, primaryServerId)
+            }
+        }
+
+        private fun getControlTemplate(item: Item): ControlTemplate? {
+            val isTypeWithoutTile = listOf(Item.Type.Image, Item.Type.Location)
+                .any { type -> item.isOfTypeOrGroupType(type) }
+
+            return when {
+                isTypeWithoutTile -> null
+                item.readOnly -> ControlTemplate.getNoTemplateObject()
+                item.options != null -> {
+                    // Open app when clicking on tile
+                    ControlTemplate.getNoTemplateObject()
+                }
+                item.isOfTypeOrGroupType(Item.Type.Switch) -> ToggleTemplate(
+                    item.name,
+                    ControlButton(item.state?.asBoolean ?: false, context.getString(R.string.nfc_action_toggle))
+                )
+                item.isOfTypeOrGroupType(Item.Type.Dimmer) || item.isOfTypeOrGroupType(Item.Type.Color) -> ToggleRangeTemplate(
+                    "${item.name}_toggle",
+                    ControlButton(item.state?.asBoolean ?: false, context.getString(R.string.nfc_action_toggle)),
+                    createRangeTemplate(item, "%.0f%%")
+                )
+                item.isOfTypeOrGroupType(Item.Type.Rollershutter) -> createRangeTemplate(item, "%.0f%%")
+                item.isOfTypeOrGroupType(Item.Type.Number) -> createRangeTemplate(
+                    item,
+                    item.state?.asNumber?.unit?.let { "%.0f $it" } ?: "%.0f"
+                )
+                item.isOfTypeOrGroupType(Item.Type.Player) -> ToggleTemplate(
+                    item.name,
+                    ControlButton(item.state?.asString == "PLAY", context.getString(R.string.nfc_action_toggle))
+                )
+                else -> ControlTemplate.getNoTemplateObject()
             }
         }
 
         private fun createRangeTemplate(item: Item, format: String): RangeTemplate {
             val currentValue = item.state?.asNumber?.value ?: 0F
-            val minimum = min(currentValue, item.minimum?.toFloat() ?: 0F)
-            val maximum = max(currentValue, item.maximum?.toFloat() ?: 100F)
+            val minimum = min(currentValue, item.minimum ?: 0F)
+            val maximum = max(currentValue, item.maximum ?: 100F)
             return RangeTemplate(
                 item.name, minimum, maximum,
-                currentValue, item.step?.toFloat() ?: 1F,
+                currentValue, item.step ?: 1F,
                 format
             )
         }
@@ -300,13 +363,14 @@ class ItemsControlsProviderService : ControlsProviderService() {
     }
 }
 
-fun Item.getDeviceType() = when (category?.lowercase()) {
+@RequiresApi(Build.VERSION_CODES.R)
+fun Item.getDeviceType() = when (category?.lowercase()?.substringAfterLast(':')) {
     "screen", "soundvolume", "receiver" -> DeviceTypes.TYPE_TV
     "lightbulb", "light", "slider" -> DeviceTypes.TYPE_LIGHT
     "lock" -> DeviceTypes.TYPE_LOCK
     "fan", "fan_box", "fan_ceiling" -> DeviceTypes.TYPE_FAN
     "blinds" -> DeviceTypes.TYPE_BLINDS
-    "rollershutter" -> DeviceTypes.TYPE_SHUTTER
+    "rollershutter" -> DeviceTypes.TYPE_BLINDS
     "window" -> DeviceTypes.TYPE_WINDOW
     "dryer" -> DeviceTypes.TYPE_DRYER
     "washingmachine" -> DeviceTypes.TYPE_WASHER
@@ -335,7 +399,6 @@ fun Item.getDeviceType() = when (category?.lowercase()) {
         Item.Tag.CeilingFan in tags -> DeviceTypes.TYPE_FAN
         Item.Tag.CellarDoor in tags -> DeviceTypes.TYPE_DOOR
         Item.Tag.CleaningRobot in tags -> DeviceTypes.TYPE_VACUUM
-        Item.Tag.Control in tags -> DeviceTypes.TYPE_REMOTE_CONTROL
         Item.Tag.Dishwasher in tags -> DeviceTypes.TYPE_DISHWASHER
         Item.Tag.Door in tags -> DeviceTypes.TYPE_DOOR
         Item.Tag.Doorbell in tags -> DeviceTypes.TYPE_DOORBELL
@@ -359,6 +422,7 @@ fun Item.getDeviceType() = when (category?.lowercase()) {
         Item.Tag.Oven in tags -> DeviceTypes.TYPE_MULTICOOKER
         Item.Tag.PowerOutlet in tags -> DeviceTypes.TYPE_OUTLET
         Item.Tag.Projector in tags -> DeviceTypes.TYPE_TV
+        Item.Tag.RadiatorControl in tags -> DeviceTypes.TYPE_RADIATOR
         Item.Tag.Receiver in tags -> DeviceTypes.TYPE_TV
         Item.Tag.Refrigerator in tags -> DeviceTypes.TYPE_REFRIGERATOR
         Item.Tag.RemoteControl in tags -> DeviceTypes.TYPE_REMOTE_CONTROL
@@ -374,6 +438,9 @@ fun Item.getDeviceType() = when (category?.lowercase()) {
         Item.Tag.WashingMachine in tags -> DeviceTypes.TYPE_WASHER
         Item.Tag.WhiteGood in tags -> DeviceTypes.TYPE_WASHER
         Item.Tag.Window in tags -> DeviceTypes.TYPE_WINDOW
+
+        // Items tagged with 'Control' might have a second more suitable tag, e.g. 'Light'
+        Item.Tag.Control in tags -> DeviceTypes.TYPE_REMOTE_CONTROL
 
         // Fallback mappings of Item type or tag to device type
         Item.Tag.Bathroom in tags -> DeviceTypes.TYPE_SHOWER

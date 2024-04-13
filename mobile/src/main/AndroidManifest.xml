@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="org.openhab.habdroid"
     android:installLocation="internalOnly">
 
     <attribution android:label="@string/send_device_info_to_server" android:tag="SEND_DEV_INFO" />
@@ -24,20 +23,35 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_TYPE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
 
+    <!-- Used by Main UI -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <uses-sdk tools:overrideLibrary="androidx.security"/>
 
+    <!-- Declare features are optional, see https://developer.android.com/guide/topics/manifest/uses-feature-element#permissions -->
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
     <uses-feature android:name="android.hardware.location" android:required="false" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <queries>
         <package android:name="net.dinglisch.android.taskerm" />
         <package android:name="com.twofortyfouram.locale" />
+        <package android:name="com.android.providers.calendar" />
+        <package android:name="com.android.calendar" />
+        <package android:name="com.samsung.android.calendar" />
+        <package android:name="com.miui.securitycenter" />
+        <package android:name="org.thoughtcrime.securesms" />
         <package android:name="nodomain.freeyourgadget.gadgetbridge" />
         <intent>
             <action android:name="android.speech.RecognitionService" />
@@ -57,7 +71,6 @@
         android:resizeableActivity="true"
         android:supportsPictureInPicture="false"
         android:supportsRtl="true"
-        android:localeConfig="@xml/locales_config"
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/openHAB.Launch">
 
@@ -97,13 +110,23 @@
         <activity
             android:name=".ui.ColorItemActivity"
             android:label="@string/widget_type_color"
-            android:exported="false" />
+            android:showWhenLocked="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            tools:targetApi="o_mr1" />
         <activity
             android:name=".ui.SelectionItemActivity"
-            android:exported="false" />
+            android:showWhenLocked="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            tools:targetApi="o_mr1" />
+
         <activity
             android:name=".ui.MainActivity"
             android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustPan"
             android:exported="true">
 
             <!-- for Nougat -->
@@ -275,6 +298,7 @@
 
         <service
             android:name=".background.EventListenerService"
+            android:foregroundServiceType="dataSync"
             android:enabled="true"
             android:exported="false" />
 

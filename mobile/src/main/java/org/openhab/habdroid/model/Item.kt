@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,14 +22,14 @@ import org.openhab.habdroid.R
 import org.openhab.habdroid.util.forEach
 import org.openhab.habdroid.util.map
 import org.openhab.habdroid.util.mapString
-import org.openhab.habdroid.util.optDoubleOrNull
+import org.openhab.habdroid.util.optFloatOrNull
 import org.openhab.habdroid.util.optStringOrNull
 import org.w3c.dom.Node
 
 @Parcelize
 data class Item internal constructor(
     val name: String,
-    val label: String?,
+    private val rawLabel: String?,
     val category: String?,
     val type: Type,
     val groupType: Type?,
@@ -40,12 +40,16 @@ data class Item internal constructor(
     val state: ParsedState?,
     val tags: List<Tag>,
     val groupNames: List<String>,
-    val minimum: Double?,
-    val maximum: Double?,
-    val step: Double?,
+    val minimum: Float?,
+    val maximum: Float?,
+    val step: Float?,
+    val linkToMore: String?
 ) : Parcelable {
+    val label get() = rawLabel?.split("[", "]")?.getOrNull(0)?.trim()
+
     enum class Type {
         None,
+        Call,
         Color,
         Contact,
         DateTime,
@@ -236,7 +240,7 @@ data class Item internal constructor(
             val parsedItem = jsonObject.toItem()
             // Events don't contain the link property, so preserve that if previously present
             val link = item?.link ?: parsedItem.link
-            return parsedItem.copy(link = link, label = parsedItem.label?.trim())
+            return parsedItem.copy(link = link, rawLabel = parsedItem.label)
         }
     }
 }
@@ -264,7 +268,7 @@ fun Node.toItem(): Item? {
 
     return Item(
         name = finalName,
-        label = finalName.trim(),
+        rawLabel = finalName,
         category = null,
         type = type,
         groupType = groupType,
@@ -277,7 +281,8 @@ fun Node.toItem(): Item? {
         groupNames = emptyList(),
         minimum = null,
         maximum = null,
-        step = null
+        step = null,
+        linkToMore = null
     )
 }
 
@@ -313,7 +318,7 @@ fun JSONObject.toItem(): Item {
         emptyList()
     }
 
-    val numberPattern = stateDescription?.optString("pattern")?.let { pattern ->
+    val formatPattern = stateDescription?.optString("pattern")?.let { pattern ->
         // Remove transformation instructions (e.g. for 'MAP(foo.map):%s' keep only '%s')
         val matchResult = """^[A-Z]+(\(.*\))?:(.*)$""".toRegex().find(pattern)
         if (matchResult != null) {
@@ -335,22 +340,29 @@ fun JSONObject.toItem(): Item {
         emptyList()
     }
 
+    val type = getString("type").toItemType()
+    var linkToMore = optJSONObject("metadata")?.optJSONObject("link_to_more")?.optStringOrNull("value")
+    if (linkToMore == null && type == Item.Type.Group) {
+        linkToMore = "/basicui/app?w=$name"
+    }
+
     return Item(
-        name,
-        optStringOrNull("label")?.trim(),
-        optStringOrNull("category")?.lowercase(Locale.US),
-        getString("type").toItemType(),
-        optString("groupType").toItemType(),
-        optStringOrNull("link"),
-        readOnly,
-        members,
-        if (options.isNullOrEmpty()) null else options,
-        state.toParsedState(numberPattern),
-        tags,
-        groupNames,
-        stateDescription?.optDoubleOrNull("minimum"),
-        stateDescription?.optDoubleOrNull("maximum"),
-        stateDescription?.optDoubleOrNull("step")
+        name = name,
+        rawLabel = optStringOrNull("label"),
+        category = optStringOrNull("category")?.lowercase(Locale.US),
+        type = type,
+        groupType = optString("groupType").toItemType(),
+        link = optStringOrNull("link"),
+        readOnly = readOnly,
+        members = members,
+        options = if (options.isNullOrEmpty()) null else options,
+        state = state.toParsedState(formatPattern),
+        tags = tags,
+        groupNames = groupNames,
+        minimum = stateDescription?.optFloatOrNull("minimum"),
+        maximum = stateDescription?.optFloatOrNull("maximum"),
+        step = stateDescription?.optFloatOrNull("step"),
+        linkToMore = linkToMore
     )
 }
 

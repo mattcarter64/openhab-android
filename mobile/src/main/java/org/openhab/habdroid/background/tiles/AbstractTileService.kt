@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -32,6 +32,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import java.lang.IllegalArgumentException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
@@ -56,9 +57,7 @@ abstract class AbstractTileService : TileService() {
             handleLifecycleEvent(Lifecycle.Event.ON_START)
         }
 
-        override fun getLifecycle(): Lifecycle {
-            return lifecycleRegistry
-        }
+        override val lifecycle = lifecycleRegistry
 
         fun startListening() {
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
@@ -252,7 +251,14 @@ abstract class AbstractTileService : TileService() {
                 tileServiceState,
                 PackageManager.DONT_KILL_APP
             )
-            requestListeningState(context, tileService)
+            try {
+                // Other users than the currently selected user may have tiles as well, which causes an exception.
+                requestListeningState(context, tileService)
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Error updating tile", e)
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "Error updating tile", e)
+            }
         }
 
         @VisibleForTesting fun getClassNameForId(id: Int) = "org.openhab.habdroid.background.tiles.TileService$id"

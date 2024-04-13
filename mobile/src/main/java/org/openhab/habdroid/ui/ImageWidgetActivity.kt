@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,7 +22,6 @@ import android.view.Menu
 import android.view.MenuItem
 import com.github.chrisbanes.photoview.PhotoView
 import kotlin.math.max
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,9 +31,11 @@ import org.openhab.habdroid.R
 import org.openhab.habdroid.core.connection.Connection
 import org.openhab.habdroid.core.connection.ConnectionFactory
 import org.openhab.habdroid.util.HttpClient
+import org.openhab.habdroid.util.IconBackground
 import org.openhab.habdroid.util.ImageConversionPolicy
 import org.openhab.habdroid.util.ScreenLockMode
 import org.openhab.habdroid.util.determineDataUsagePolicy
+import org.openhab.habdroid.util.getIconFallbackColor
 import org.openhab.habdroid.util.orDefaultIfEmpty
 
 class ImageWidgetActivity : AbstractBaseActivity() {
@@ -48,8 +49,6 @@ class ImageWidgetActivity : AbstractBaseActivity() {
 
         setContentView(R.layout.activity_image)
 
-        setSupportActionBar(findViewById(R.id.openhab_toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title =
             intent.getStringExtra(WIDGET_LABEL).orDefaultIfEmpty(getString(R.string.widget_type_image))
 
@@ -95,7 +94,7 @@ class ImageWidgetActivity : AbstractBaseActivity() {
                 super.onOptionsItemSelected(item)
             }
             R.id.refresh -> {
-                CoroutineScope(Dispatchers.IO + Job()).launch {
+                launch(Dispatchers.IO) {
                     loadImage()
                 }
                 true
@@ -114,7 +113,11 @@ class ImageWidgetActivity : AbstractBaseActivity() {
             try {
                 conn.httpClient
                     .get(widgetUrl)
-                    .asBitmap(size, ImageConversionPolicy.PreferTargetSize)
+                    .asBitmap(
+                        size,
+                        getIconFallbackColor(IconBackground.APP_THEME),
+                        ImageConversionPolicy.PreferTargetSize
+                    )
                     .response
             } catch (e: HttpClient.HttpException) {
                 Log.d(TAG, "Failed to load image", e)

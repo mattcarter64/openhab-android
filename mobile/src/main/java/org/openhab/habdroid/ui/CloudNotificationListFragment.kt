@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -36,7 +36,6 @@ import org.openhab.habdroid.R
 import org.openhab.habdroid.core.connection.ConnectionFactory
 import org.openhab.habdroid.model.ServerConfiguration
 import org.openhab.habdroid.model.toCloudNotification
-import org.openhab.habdroid.ui.widget.DividerItemDecoration
 import org.openhab.habdroid.util.HttpClient
 import org.openhab.habdroid.util.getActiveServerId
 import org.openhab.habdroid.util.getConfiguredServerIds
@@ -50,7 +49,7 @@ import org.openhab.habdroid.util.map
  * fragment (e.g. upon screen orientation changes).
  */
 class CloudNotificationListFragment : Fragment(), View.OnClickListener, SwipeRefreshLayout.OnRefreshListener {
-    private lateinit var recyclerView: RecyclerView
+    lateinit var recyclerView: RecyclerView
     private lateinit var swipeLayout: SwipeRefreshLayout
     private lateinit var retryButton: Button
     private lateinit var emptyView: View
@@ -89,7 +88,6 @@ class CloudNotificationListFragment : Fragment(), View.OnClickListener, SwipeRef
         layoutManager = LinearLayoutManager(view.context)
 
         recyclerView.layoutManager = layoutManager
-        recyclerView.addItemDecoration(DividerItemDecoration(view.context))
         recyclerView.adapter = adapter
     }
 
@@ -186,13 +184,14 @@ class CloudNotificationListFragment : Fragment(), View.OnClickListener, SwipeRef
 
     fun getTitle(context: Context): String {
         val prefs = context.getPrefs()
-        return if (prefs.getConfiguredServerIds().size <= 1) {
-            context.getString(R.string.app_notifications)
-        } else {
+        var title = context.getString(R.string.app_notifications)
+        if (prefs.getConfiguredServerIds().size > 1) {
             val serverId = if (usePrimaryServer()) prefs.getPrimaryServerId() else prefs.getActiveServerId()
-            val activeServerName = ServerConfiguration.load(prefs, context.getSecretPrefs(), serverId)?.name
-            context.getString(R.string.app_notifications_on_server, activeServerName)
+            val serverName = ServerConfiguration.load(prefs, context.getSecretPrefs(), serverId)?.name
+            title = context.getString(R.string.ui_on_server, title, serverName)
         }
+
+        return title
     }
 
     companion object {

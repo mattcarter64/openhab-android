@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,6 +14,7 @@
 package org.openhab.habdroid.util
 
 import android.graphics.Bitmap
+import androidx.annotation.ColorInt
 import androidx.annotation.VisibleForTesting
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -42,7 +43,7 @@ import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
 
-class HttpClient constructor(client: OkHttpClient, baseUrl: String?, username: String?, password: String?) {
+class HttpClient(client: OkHttpClient, baseUrl: String?, username: String?, password: String?) {
     private val client: OkHttpClient
     private val baseUrl: HttpUrl? = baseUrl?.toHttpUrlOrNull()
     @VisibleForTesting val authHeader: String? = if (!username.isNullOrEmpty())
@@ -54,10 +55,12 @@ class HttpClient constructor(client: OkHttpClient, baseUrl: String?, username: S
             // Forcibly put authorization info into request, as redirect/retry interceptor might have removed it
             clientBuilder.addNetworkInterceptor { chain ->
                 val request = chain.request()
-                    .newBuilder()
-                    .addHeader("Authorization", authHeader)
-                    .build()
-                chain.proceed(request)
+                // Make sure not to send authentication credentials to external servers
+                chain.proceed(if (this.baseUrl?.host == request.url.host) {
+                    request.newBuilder().addHeader("Authorization", authHeader).build()
+                } else {
+                    request
+                })
             }
         }
         this.client = clientBuilder.build()
@@ -216,8 +219,14 @@ class HttpClient constructor(client: OkHttpClient, baseUrl: String?, username: S
         }
 
         @Throws(HttpException::class)
-        suspend fun asBitmap(sizeInPixels: Int, conversionPolicy: ImageConversionPolicy): HttpBitmapResult = try {
-            val bitmap = withContext(Dispatchers.IO) { response.toBitmap(sizeInPixels, conversionPolicy) }
+        suspend fun asBitmap(
+            sizeInPixels: Int,
+            @ColorInt fallbackColor: Int,
+            conversionPolicy: ImageConversionPolicy
+        ): HttpBitmapResult = try {
+            val bitmap = withContext(Dispatchers.IO) {
+                response.toBitmap(sizeInPixels, fallbackColor, conversionPolicy)
+            }
             HttpBitmapResult(request, bitmap)
         } catch (e: IOException) {
             throw HttpException(request, originalUrl, e)
@@ -248,7 +257,7 @@ class HttpClient constructor(client: OkHttpClient, baseUrl: String?, username: S
         }
     }
 
-    class SseFailureException constructor(val response: Response?, cause: Throwable?) : Exception(cause)
+    class SseFailureException(val response: Response?, cause: Throwable?) : Exception(cause)
 
     internal class SseListener : EventSourceListener() {
         val channel = Channel<String>()

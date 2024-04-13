@@ -14,19 +14,16 @@
     <string name="mainmenu_openhab_sitemaps">Sitemaps</string>
     <string name="mainmenu_openhab_preferences">Einstellungen</string>
     <string name="mainmenu_openhab_habpanel">HABPanel</string>
-    <string name="mainmenu_openhab_habpanel_on_server">HABPanel (%s)</string>
-    <string name="mainmenu_openhab_oh3_ui">openHAB 3 UI</string>
-    <string name="mainmenu_openhab_oh3_ui_on_server">openHAB 3 UI (%s)</string>
+    <string name="mainmenu_openhab_main_ui">Main UI</string>
     <string name="mainmenu_openhab_frontail">Frontail</string>
-    <string name="mainmenu_openhab_frontail_on_server">Frontail (%s)</string>
+    <!-- %1$s: Name of a UI, %2$s: Server name. Example: HABPanel (House). Use the source string as translation if the punctuation rules are the same as in English. -->
+    <string name="ui_on_server">%1$s (%2$s)</string>
     <string name="app_notifications">Benachrichtigungen</string>
-    <string name="app_notifications_on_server">Benachrichtigungen (%s)</string>
     <string name="habpanel_error">Beim Laden von HABPanel ist ein Fehler aufgetreten</string>
-    <string name="oh3_ui_error">Beim Laden der openHAB 3 UI ist ein Fehler aufgetreten</string>
+    <string name="main_ui_error">Beim Laden der Main UI ist ein Fehler aufgetreten</string>
     <string name="frontail_error">Beim Laden von Frontail ist ein Fehler aufgetreten. Bitte beachten Sie, dass Frontail nicht über openHAB Cloud verfügbar ist.</string>
-    <string name="frontail_pref_summary">Frontail muss auf dem Standard-Port 9001 laufen. Es kann entweder mit openHABian oder manuell installiert werden.</string>
     <string name="mainmenu_openhab_selectsitemap">Standard-Sitemap auswählen</string>
-    <string name="mainmenu_openhab_clearcache">Bilder-Cache leeren</string>
+    <string name="settings_clear_caches">Cache leeren</string>
     <!-- App settings strings -->
     <string name="settings_connection_title">Verbindung</string>
     <string name="settings_display_title">Anzeige</string>
@@ -44,6 +41,8 @@
     <string name="settings_openhab_sslclientcert">SSL-Client-Zertifikat</string>
     <string name="settings_openhab_sslclientcert_howto_summary">Für Hinweise und Erläuterungen zur SSL-Authentifizierung mittels Client-Zertifikat hier tippen</string>
     <string name="settings_openhab_sslclientcert_not_supported">SSL-Client-Zertifikate werden von Ihrem Gerät nicht unterstützt</string>
+    <string name="frontail_url_title">Frontail URL</string>
+    <string name="frontail_url_summary">Die URL von Frontail. Frontail ist in openHABian enthalten oder kann manuell installiert werden. Ohne Eintrag wird die Standardeinstellungen verwendet. Aktuelle Einstellungen: %s</string>
     <string name="settings_openhab_screentimeroff">Bildschirmabschaltung deaktivieren</string>
     <string name="settings_openhab_screentimeroff_summary">Der Bildschirm schaltet sich nicht aus, wenn openHAB läuft</string>
     <string name="settings_openhab_demomode">Demomodus</string>
@@ -51,10 +50,14 @@
     <string name="start_page_title">Startseite</string>
     <string name="drawer_entries">Einträge im Seitenmenü</string>
     <string name="settings_openhab_theme">Design</string>
-    <string name="settings_accent_color">Akzentfarbe</string>
-    <string name="settings_select_a_color">Wähle eine Farbe</string>
     <string name="settings_openhab_fullscreen">Vollbild</string>
-    <string name="settings_set_as_launcher">Verwendung der App als Start-App ermöglichen</string>
+    <string name="settings_set_as_launcher_title">Als Start-App registrieren</string>
+    <string name="settings_set_as_launcher_summary">Verwendung der App als Start-App ermöglichen. Nach der Aktivierung muss die App noch als Standard-Start-App ausgewählt werden, um wirksam zu werden.</string>
+    <string name="settings_sitemap_compact_mode_title">Kompaktmodus</string>
+    <string name="settings_sitemap_compact_mode_off">Das zweizeilige Layout für Sitemap-Widgets vergrößert die Felder, wodurch die Bedienung einfacher wird. Bei längeren Listen muss allerdings mehr gescrollt werden.</string>
+    <string name="settings_sitemap_compact_mode_on">Das einzeilige Layout für Sitemap-Widgets schafft Platz, um mehr Widgets gleichzeitig darzustellen. Allerdings verringert sich die Größe der einzelnen Felder.</string>
+    <string name="settings_color_scheme_title">Farbschema</string>
+    <string name="settings_show_icons">Icons anzeigen</string>
     <string name="settings_openhab_icon_format">Icon-Format</string>
     <string name="settings_openhab_icon_format_png">Pixelgrafik</string>
     <string name="settings_openhab_icon_format_svg">Vektorgrafik</string>
@@ -73,6 +76,9 @@
     <string name="settings_no_default_sitemap">Keine Standard-Sitemap festgelegt</string>
     <!-- %1$s: Default Sitemap label -->
     <string name="settings_current_default_sitemap">Aktuelle Standard-Sitemap: %1$s</string>
+    <string name="settings_ui_command_item">Item für UI-Befehle</string>
+    <string name="settings_ui_command_item_summary_on">Sitemap kann über Item \"%s\" gesteuert werden</string>
+    <string name="settings_ui_command_item_summary_off">Sitemap kann nicht über ein Item gesteuert werden</string>
     <string name="settings_openhab_alt_connection">Fernzugriff</string>
     <string name="settings_openhab_connection">Lokal</string>
     <string name="settings_ringtone">Klingelton</string>
@@ -84,6 +90,9 @@
     <string name="settings_notification_vibration_long">Lang</string>
     <string name="settings_notification_vibration_twice">Zweimal</string>
     <string name="settings_notification_ringtone_vibration">Klingelton &amp; Vibration</string>
+    <string name="settings_notification_reset_settings">Kategorien zurücksetzen</string>
+    <string name="settings_notification_reset_settings_confirm">Möchten Sie alle Benachrichtigungskategorien entfernen? Sie werden erneut erzeugt, wenn eine neue Benachrichtigung für diese Kategorie eintrifft.</string>
+    <string name="settings_notification_hint">Die Priorität der Benachrichtigungen über myopenHAB.org ist als Benachrichtigungskategorie festgelegt. Sie können für jede Kategorie unterschiedliche Benachrichtigungseinstellungen konfigurieren.</string>
     <string name="settings_connection_summary">Verbunden mit %s</string>
     <!-- %1$s: URL, %2$s: Reason why connection is insecure -->
     <string name="settings_insecure_connection_summary">Unsicher verbunden mit %1$s: %2$s</string>
@@ -124,7 +133,9 @@
     <string name="device_control_subtitle_equipment">Gerät</string>
     <string name="device_control_subtitle_location_equipment">Standort und Gerät</string>
     <string name="device_control_subtitle_item_name">Item-Name</string>
-    <string name="device_control_subtitle">Beschreibung für Android-Gerätesteuerung</string>
+    <string name="device_control">Android-Geräte-Steuerung</string>
+    <string name="device_control_subtitle">Beschreibung in Kacheln</string>
+    <string name="device_control_hint">Abhängig von Ihrer Android-Version befinden sich diese Kacheln im Menü der Power-Taste oder neben den Schnelleinstellungen</string>
     <!-- App messages strings -->
     <string name="title_voice_widget">Sprachbefehle</string>
     <string name="voice_command">Sprachbefehl</string>
@@ -169,8 +180,10 @@
     <string name="error_certificate_wrong_host">Das Zertifikat ist für %s nicht gültig</string>
     <string name="error_http_to_https_port">Unerwartetes Ende des Streams. Versuchen Sie, über HTTP eine Verbindung zu einem HTTPS-Port herzustellen?</string>
     <string name="webview_ssl">Derzeit unterstützt diese App keine selbstsignierten SSL-Zertifikate für Webview-Widgets</string>
+    <string name="webview_snackbar_permissions_missing">Die Seite benötigt zusätzliche Berechtigungen, um korrekt zu funktionieren</string>
     <!-- The following strings are referenced via reflection in Context.getHumanReadableErrorMessage -->
-    <string name="error_http_code_401" tools:keep="@string/error_http_code_401">Authentifizierung fehlgeschlagen. Bitte überprüfen Sie den konfigurierten Benutzernamen und das Passwort bzw. das angegebene SSL-Client-Zertifikat (HTTP-Code %d).</string>
+    <string name="error_http_code_401" tools:keep="@string/error_http_code_401">Authentifizierung fehlgeschlagen. Bitte überprüfen Sie den konfigurierten Benutzernamen und das Passwort bzw. das angegebene SSL-Client-Zertifikat (HTTP-Code %d). Stellen Sie sicher, dass der Server Basic Authentication aktiviert hat.</string>
+    <string name="error_http_code_404" tools:keep="@string/error_http_code_404">Nicht gefunden (HTTP-Code %d)</string>
     <string name="error_http_code_414" tools:keep="@string/error_http_code_414">URL ist zu lang. Bitte verwenden Sie die IP-Adresse oder eine kürzere URL (HTTP-Code %d).</string>
     <string name="error_http_code_426" tools:keep="@string/error_http_code_426">HTTPS ist erforderlich. Bitte ändern Sie die URL (HTTP-Code %d).</string>
     <!-- Nginx specific codes, but since it is the recommended reverse proxy, we should check for them: https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#nginx -->
@@ -273,9 +286,9 @@
     <string name="settings_dnd_mode">Bitte-Nicht-Stören-Modus</string>
     <string name="settings_dnd_mode_summary_on">Bitte-Nicht-Stören-Modus wird an Item \'%1$s\' gesendet</string>
     <string name="settings_dnd_mode_summary_off">Bitte-Nicht-Stören-Modus nicht senden</string>
-    <string name="settings_gadgetbridge">Gadgetbridge-Geräte-Aktionen</string>
-    <string name="settings_gadgetbridge_summary_on">Sendet Gadgetbridge-Geräte-Aktionen an Item \'%1$s\'. Erfordert die Aktivierung der Ereignisüberwachung.</string>
-    <string name="settings_gadgetbridge_summary_off">Keine Gadgetbridge-Geräte-Aktionen senden</string>
+    <string name="settings_gadgetbridge">Gadgetbridge-Geräteaktionen</string>
+    <string name="settings_gadgetbridge_summary_on">Sendet Gadgetbridge-Geräteaktionen an Item \'%1$s\'. Erfordert die Aktivierung der Ereignisüberwachung.</string>
+    <string name="settings_gadgetbridge_summary_off">Keine Gadgetbridge-Geräteaktionen senden</string>
     <string name="settings_background_tasks_permission_hint_pre_r">Diese Funktion erfordert zusätzliche Berechtigungen. Nach der Aktivierung werden Sie um Genehmigung gebeten.</string>
     <string name="settings_background_tasks_permission_hint">Diese Funktion erfordert zusätzliche Berechtigungen. Nach der Aktivierung werden Sie um Genehmigung gebeten. Bitte genehmigen Sie die Berechtigung auch für die Hintergrundnutzung, da die Item-Aktualisierung auch erfolgt, wenn die App im Hintergrund läuft.</string>
     <string name="settings_permission_denied">Einige Funktionen wurden aufgrund fehlender Berechtigungen deaktiviert</string>
@@ -357,6 +370,9 @@
     <string name="theme_name_system">System folgen</string>
     <string name="theme_name_battery_saver">Dunkler Modus im Energiesparmodus</string>
     <string name="theme_name_black">Schwarz</string>
+    <string name="color_scheme_name_default">Standard</string>
+    <string name="color_scheme_name_basicui">Basic UI</string>
+    <string name="color_scheme_name_dynamic">Dynamisch</string>
     <!-- Chart -->
     <string name="chart_activity_title">Diagramm</string>
     <string name="chart_activity_hide_legend">Legende ausblenden</string>
@@ -419,9 +435,6 @@
     <string name="about_rate_this_app">Bewerten Sie diese App</string>
     <string name="settings_debug_messages_title">Informationen zur Fehlerbehebung anzeigen</string>
     <string name="settings_troubleshooting_title">Fehlerbehebung</string>
-    <string name="set">Setzen</string>
-    <string name="cancel">Abbrechen</string>
-    <string name="close">Schließen</string>
     <string name="undo">Rückgängig</string>
     <string name="try_again_button">Erneut versuchen</string>
     <string name="enable_wifi_button">WLAN aktivieren</string>
@@ -453,6 +466,10 @@
     <string name="content_description_open_roller_shutter">Rollladen öffnen</string>
     <string name="content_description_stop_roller_shutter">Rollladenbewegung stoppen</string>
     <string name="content_description_close_roller_shutter">Rollladen schließen</string>
+    <string name="content_description_player_previous">Zum vorherigen Titel springen</string>
+    <string name="content_description_player_next">Zum nächsten Titel springen</string>
+    <string name="content_description_player_pause">Wiedergabe pausieren</string>
+    <string name="content_description_player_play">Wiedergabe starten</string>
     <string name="content_description_open_color_wheel">Farbauswahl öffnen</string>
     <string name="content_description_color_up">Ein oder Halten zum Erhöhen der Helligkeit</string>
     <string name="content_description_color_down">Aus oder Halten zum Verringern der Helligkeit</string>
@@ -500,13 +517,13 @@
     <string name="press_back_to_exit">Zum Beenden erneut Zurück drücken</string>
     <!-- Item update widget -->
     <string name="item_update_widget_title">Item-Steuerung</string>
-    <string name="item_update_widget_content_description">Widget zur Änderung von Item-Zuständen</string>
+    <string name="item_update_widget_content_description">Status eines Items ändern oder lesen</string>
     <string name="item_update_widget_content_description_edit">Widget bearbeiten</string>
     <string name="item_update_widget">Widget</string>
     <!-- %1$s: Item label, %2$s: Action, e.g. "Lights: On". Use the source string as translation if the punctuation rules are the same as in English. -->
     <string name="item_update_widget_text">%1$s: %2$s</string>
-    <string name="item_update_widget_item_picker_title">Wählen Sie ein Item</string>
-    <string name="widget_show_state">Aktuellen Status an Name anhängen</string>
+    <!-- Used in the widget preview -->
+    <string name="item_update_widget_preview_text">Garage öffnen</string>
     <string name="widget_show_state_summary">Der Status wird mit dem Zeitplan aktualisiert, der in den Einstellungen unter \"Geräteinformationen an Server senden\" eingestellt werden kann</string>
     <string name="widget_no_command">Keinen Befehl senden</string>
     <string name="error_getting_state">Fehler beim Laden des Status</string>
@@ -549,6 +566,7 @@
     <string name="item_update_error_no_connection">Keine Verbindung</string>
     <string name="item_update_error_couldnt_get_item_type">Item-Typ konnte nicht abgerufen werden</string>
     <string name="create_home_screen_widget_title">Widget erstellen</string>
+    <string name="create_home_screen_widget_no_command">Aktuellen Zustand anzeigen</string>
     <string name="create_home_screen_widget_not_supported">Bitte gehen Sie zum Widget-Menü auf Ihrem Startbildschirm und erstellen Sie von dort ein Widget</string>
     <!-- Data saver -->
     <string name="data_saver_title">Datensparmodus</string>

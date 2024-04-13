@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -22,7 +22,6 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import org.openhab.habdroid.BuildConfig
 import org.openhab.habdroid.R
@@ -33,8 +32,8 @@ import org.openhab.habdroid.model.ServerConfiguration
 import org.openhab.habdroid.model.ServerPath
 import org.openhab.habdroid.model.putIconResource
 import org.openhab.habdroid.model.toOH2IconResource
-import org.openhab.habdroid.ui.preference.PreferencesActivity
 import org.openhab.habdroid.ui.homescreenwidget.ItemUpdateWidget
+import org.openhab.habdroid.ui.preference.PreferencesActivity
 import org.openhab.habdroid.util.PrefKeys
 import org.openhab.habdroid.util.getConfiguredServerIds
 import org.openhab.habdroid.util.getDayNightMode
@@ -100,14 +99,6 @@ class UpdateBroadcastReceiver : BroadcastReceiver() {
                 }
 
                 AppCompatDelegate.setDefaultNightMode(prefs.getDayNightMode(context))
-
-                val accentColor = when (prefs.getStringOrNull("default_openhab_theme")) {
-                    "basicui", "basicuidark" -> ContextCompat.getColor(context, R.color.indigo_500)
-                    "black", "dark" -> ContextCompat.getColor(context, R.color.blue_grey_700)
-                    else -> ContextCompat.getColor(context, R.color.openhab_orange)
-                }
-
-                putInt(PrefKeys.ACCENT_COLOR, accentColor)
             }
             if (comparableVersion <= WIDGET_ICON) {
                 Log.d(TAG, "Migrate widget icon prefs")
@@ -158,7 +149,8 @@ class UpdateBroadcastReceiver : BroadcastReceiver() {
                         prefs.getStringOrNull("default_openhab_sslclientcert"),
                         defaultSitemap,
                         null,
-                        false
+                        false,
+                        null
                     )
                     config.saveToPrefs(prefs, secretPrefs)
                     prefs.edit {
@@ -192,7 +184,6 @@ class UpdateBroadcastReceiver : BroadcastReceiver() {
                             ?: context.getString(R.string.item_update_widget_text, oldData.label, oldData.mappedState),
                         oldData.mappedState,
                         oldData.icon,
-                        oldData.theme,
                         oldData.showState
                     )
 
@@ -201,16 +192,21 @@ class UpdateBroadcastReceiver : BroadcastReceiver() {
             }
             if (comparableVersion <= MULTIPLE_WIFI_SSIDS) {
                 prefs.getConfiguredServerIds().forEach { serverId ->
-                    prefs.edit {
-                        val key = PrefKeys.buildServerKey(serverId, PrefKeys.WIFI_SSID_PREFIX)
-                        val ssid = prefs.getStringOrNull(key)
-                        prefs.edit {
-                            putStringSet(key, if (ssid.isNullOrEmpty()) emptySet() else setOf(ssid))
-                        }
-                    }
+                    val key = PrefKeys.buildServerKey(serverId, PrefKeys.WIFI_SSID_PREFIX)
+                    val ssid = prefs.getStringOrNull(key)
+                    putStringSet(key, if (ssid.isNullOrEmpty()) emptySet() else setOf(ssid))
                 }
             }
-
+            if (comparableVersion <= THEMES_AND_DYNAMIC_COLORS) {
+                val newThemeNameResId = when {
+                    prefs.getBoolean("dynamic_colors", false) -> R.string.color_scheme_value_dynamic
+                    prefs.getInt("theme_color", 0) == 0xff3f51b5.toInt() -> R.string.color_scheme_value_basicui
+                    else -> R.string.color_scheme_value_default
+                }
+                putString(PrefKeys.COLOR_SCHEME, context.getString(newThemeNameResId))
+                remove("theme_color")
+                remove("dynamic_colors")
+            }
             updateComparableVersion(this)
         }
 
@@ -232,6 +228,7 @@ class UpdateBroadcastReceiver : BroadcastReceiver() {
         private const val MULTI_SERVER_SUPPORT = 330
         private const val WIDGETS_NO_AUTO_GEN_LABEL = 380
         private const val MULTIPLE_WIFI_SSIDS = 407
+        private const val THEMES_AND_DYNAMIC_COLORS = 464
 
         fun updateComparableVersion(editor: SharedPreferences.Editor) {
             editor.putInt(PrefKeys.COMPARABLE_VERSION, BuildConfig.VERSION_CODE).apply()

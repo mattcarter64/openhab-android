@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -34,11 +34,13 @@ import org.openhab.habdroid.R
 import org.openhab.habdroid.core.connection.Connection
 import org.openhab.habdroid.util.CacheManager
 import org.openhab.habdroid.util.HttpClient
+import org.openhab.habdroid.util.IconBackground
 import org.openhab.habdroid.util.ImageConversionPolicy
+import org.openhab.habdroid.util.getIconFallbackColor
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.isDebugModeEnabled
 
-class WidgetImageView constructor(context: Context, attrs: AttributeSet?) : AppCompatImageView(context, attrs) {
+class WidgetImageView(context: Context, attrs: AttributeSet?) : AppCompatImageView(context, attrs) {
     private var scope: CoroutineScope? = null
     private val fallback: Drawable?
     private val progressDrawable: Drawable?
@@ -244,7 +246,10 @@ class WidgetImageView constructor(context: Context, attrs: AttributeSet?) : AppC
     private fun doLoad(client: HttpClient, url: HttpUrl, timeoutMillis: Long, forceLoad: Boolean) {
         cancelCurrentLoad()
 
-        val cached = CacheManager.getInstance(context).getCachedBitmap(url)
+        val cached = CacheManager.getInstance(context).getCachedBitmap(
+            url,
+            context.getIconFallbackColor(IconBackground.APP_THEME)
+        )
         val request = HttpImageRequest(client, url, targetImageSize, timeoutMillis)
 
         if (cached != null) {
@@ -359,11 +364,16 @@ class WidgetImageView constructor(context: Context, attrs: AttributeSet?) : AppC
                         ScaleType.FIT_END, ScaleType.FIT_XY -> ImageConversionPolicy.PreferTargetSize
                         else -> ImageConversionPolicy.PreferSourceSize
                     }
+                    val fallbackColor = context.getIconFallbackColor(IconBackground.APP_THEME)
                     val bitmap = client.get(actualUrl.toString(),
                         timeoutMillis = timeoutMillis, caching = cachingMode)
-                        .asBitmap(size, conversionPolicy)
+                        .asBitmap(
+                            size,
+                            fallbackColor,
+                            conversionPolicy
+                        )
                         .response
-                    CacheManager.getInstance(context).cacheBitmap(url, bitmap)
+                    CacheManager.getInstance(context).cacheBitmap(url, bitmap, fallbackColor)
                     applyLoadedBitmap(bitmap)
                     lastRefreshTimestamp = SystemClock.uptimeMillis()
                     scheduleNextRefreshIfNeeded()

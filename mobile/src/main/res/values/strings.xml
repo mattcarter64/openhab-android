@@ -18,19 +18,16 @@
     <string name="mainmenu_openhab_sitemaps">Sitemaps</string>
     <string name="mainmenu_openhab_preferences">Settings</string>
     <string name="mainmenu_openhab_habpanel">HABPanel</string>
-    <string name="mainmenu_openhab_habpanel_on_server">HABPanel (%s)</string>
-    <string name="mainmenu_openhab_oh3_ui">openHAB 3 UI</string>
-    <string name="mainmenu_openhab_oh3_ui_on_server">openHAB 3 UI (%s)</string>
+    <string name="mainmenu_openhab_main_ui">Main UI</string>
     <string name="mainmenu_openhab_frontail">Frontail</string>
-    <string name="mainmenu_openhab_frontail_on_server">Frontail (%s)</string>
+    <!-- %1$s: Name of a UI, %2$s: Server name. Example: HABPanel (House). Use the source string as translation if the punctuation rules are the same as in English. -->
+    <string name="ui_on_server">%1$s (%2$s)</string>
     <string name="app_notifications">Notifications</string>
-    <string name="app_notifications_on_server">Notifications (%s)</string>
     <string name="habpanel_error">An error occurred while loading HABPanel</string>
-    <string name="oh3_ui_error">An error occurred while loading openHAB 3 UI</string>
+    <string name="main_ui_error">An error occurred while loading Main UI</string>
     <string name="frontail_error">An error occurred while loading Frontail. Please note that it\'s not available via openHAB Cloud.</string>
-    <string name="frontail_pref_summary">Frontail must run on its default port 9001. It\'s bundled with openHABian or can be installed manually.</string>
     <string name="mainmenu_openhab_selectsitemap">Select default Sitemap</string>
-    <string name="mainmenu_openhab_clearcache">Clear images cache</string>
+    <string name="settings_clear_caches">Clear cache</string>
 
     <!-- App settings strings -->
     <string name="settings_connection_title">Connection</string>
@@ -50,6 +47,8 @@
     <string name="settings_openhab_sslclientcert_howto_summary">Tap here to get some hints and explanations on how to set up SSL client certificate authentication</string>
     <string name="settings_openhab_sslclientcert_howto_url" translatable="false">https://community.openhab.org/t/using-nginx-reverse-proxy-for-client-certificate-authentication-start-discussion/43064</string>
     <string name="settings_openhab_sslclientcert_not_supported">SSL client certificates are not supported by your device</string>
+    <string name="frontail_url_title">Frontail URL</string>
+    <string name="frontail_url_summary">The URL of Frontail. It\'s bundled with openHABian or can be installed manually. Leave empty to use the default settings. Current setting: %s</string>
     <string name="settings_openhab_screentimeroff">Disable screen timeout</string>
     <string name="settings_openhab_screentimeroff_summary">The screen doesn\'t turn off when openHAB is running</string>
     <string name="settings_openhab_demomode">Demo mode</string>
@@ -57,10 +56,14 @@
     <string name="start_page_title">Start page</string>
     <string name="drawer_entries">Side menu entries</string>
     <string name="settings_openhab_theme">Theme</string>
-    <string name="settings_accent_color">Accent color</string>
-    <string name="settings_select_a_color">Select a color</string>
     <string name="settings_openhab_fullscreen">Fullscreen</string>
-    <string name="settings_set_as_launcher">Allow app to be used as launcher</string>
+    <string name="settings_set_as_launcher_title">Register as launcher</string>
+    <string name="settings_set_as_launcher_summary">Allow the app to be used as launcher. After enabling, the app still needs to be selected as default launcher to take effect.</string>
+    <string name="settings_sitemap_compact_mode_title">Compact mode</string>
+    <string name="settings_sitemap_compact_mode_off">Use a two-line layout for Sitemap widgets, which makes controls larger and thus easier to use, but requires more scrolling for longer lists</string>
+    <string name="settings_sitemap_compact_mode_on">Use a one-line layout for Sitemap widgets, which puts as many widgets as possible on the screen, but reduces size of the controls</string>
+    <string name="settings_color_scheme_title">Color scheme</string>
+    <string name="settings_show_icons">Show icons</string>
     <string name="settings_openhab_icon_format">Icon format</string>
     <string name="settings_openhab_icon_format_value_png" translatable="false">PNG</string>
     <string name="settings_openhab_icon_format_value_svg" translatable="false">SVG</string>
@@ -81,6 +84,10 @@
     <string name="settings_no_default_sitemap">No default Sitemap selected</string>
     <!-- %1$s: Default Sitemap label -->
     <string name="settings_current_default_sitemap">Current default Sitemap: %1$s</string>
+    <string name="settings_ui_command_item_howto_url" translatable="false">https://www.openhab.org/docs/apps/android.html#ui-command-item</string>
+    <string name="settings_ui_command_item">UI command Item</string>
+    <string name="settings_ui_command_item_summary_on">Sitemap can be controlled via Item \"%s\"</string>
+    <string name="settings_ui_command_item_summary_off">Sitemap can\'t be controlled by an Item</string>
     <string name="settings_openhab_alt_connection">Remote</string>
     <string name="settings_openhab_connection">Local</string>
     <string name="settings_ringtone">Ringtone</string>
@@ -96,6 +103,9 @@
     <string name="settings_notification_vibration_value_long" translatable="false">long</string>
     <string name="settings_notification_vibration_value_twice" translatable="false">twice</string>
     <string name="settings_notification_ringtone_vibration">Ringtone &amp; Vibration</string>
+    <string name="settings_notification_reset_settings">Reset categories</string>
+    <string name="settings_notification_reset_settings_confirm">Do you want to remove all notification categories? They will be re-created when a new notification arrives for this category.</string>
+    <string name="settings_notification_hint">The severity of notifications via myopenHAB.org is set as notification category. You can configure different notification settings for each category.</string>
     <string name="settings_connection_summary">Connected to %s</string>
     <!-- %1$s: URL, %2$s: Reason why connection is insecure -->
     <string name="settings_insecure_connection_summary">Insecurely connected to %1$s: %2$s</string>
@@ -144,7 +154,9 @@
     <string name="device_control_subtitle_equipment_value" translatable="false">equipment</string>
     <string name="device_control_subtitle_location_equipment_value" translatable="false">location_equipment</string>
     <string name="device_control_subtitle_item_name_value" translatable="false">item_name</string>
-    <string name="device_control_subtitle">Device control subtitle</string>
+    <string name="device_control">Android device control</string>
+    <string name="device_control_subtitle">Description in tiles</string>
+    <string name="device_control_hint">Depending on your Android version these tiles are located at long-press menu of the power button or next to the quick tiles</string>
 
     <!-- App messages strings -->
     <string name="title_voice_widget">Voice commands</string>
@@ -191,9 +203,12 @@
     <string name="error_certificate_wrong_host">SSL certificate is not valid for %s</string>
     <string name="error_http_to_https_port">Unexpected end of stream. Are you trying to connect to an HTTPS port via HTTP?</string>
     <string name="webview_ssl">Currently this app doesn\'t support self-signed SSL certificates for Webview widgets</string>
+    <string name="webview_snackbar_permissions_missing">The page requires additional permissions to work properly</string>
+
     <!-- The following strings are referenced via reflection in Context.getHumanReadableErrorMessage -->
-    <string name="error_http_code_401" tools:keep="@string/error_http_code_401">Authentication failed. Please check the configured username and password respectively the provided SSL client certificate (HTTP code %d).</string>
+    <string name="error_http_code_401" tools:keep="@string/error_http_code_401">Authentication failed. Please check the configured username and password respectively the provided SSL client certificate (HTTP code %d). Make sure the server has Basic Authentication enabled.</string>
     <string name="error_http_code_403" translatable="false" tools:keep="@string/error_http_code_403">@string/error_http_code_401</string>
+    <string name="error_http_code_404" tools:keep="@string/error_http_code_404">Not found (HTTP code %d)</string>
     <string name="error_http_code_407" translatable="false" tools:keep="@string/error_http_code_407">@string/error_http_code_401</string>
     <string name="error_http_code_414" tools:keep="@string/error_http_code_414">URL is too long. Please use the IP address or a shorter URL (HTTP code %d).</string>
     <string name="error_http_code_426" tools:keep="@string/error_http_code_426">HTTPS is required. Please change the URL (HTTP code %d).</string>
@@ -403,6 +418,14 @@
     <string name="theme_name_battery_saver">Dark mode in battery saver</string>
     <string name="theme_name_black">Black</string>
 
+    <string name="color_scheme_value_default" translatable="false">default</string>
+    <string name="color_scheme_value_basicui" translatable="false">basicui</string>
+    <string name="color_scheme_value_dynamic" translatable="false">dynamic</string>
+    <string name="color_scheme_value_default_value" translatable="false">@string/color_scheme_value_default</string>
+    <string name="color_scheme_name_default">Default</string>
+    <string name="color_scheme_name_basicui">Basic UI</string>
+    <string name="color_scheme_name_dynamic">Dynamic</string>
+
     <!-- Chart -->
     <string name="chart_activity_title">Chart</string>
     <string name="chart_activity_hide_legend">Hide legend</string>
@@ -471,9 +494,6 @@
 
     <string name="settings_debug_messages_title">Show information for troubleshooting</string>
     <string name="settings_troubleshooting_title">Troubleshooting</string>
-    <string name="set">Set</string>
-    <string name="cancel">Cancel</string>
-    <string name="close">Close</string>
     <string name="undo">Undo</string>
     <string name="try_again_button">Try again</string>
     <string name="enable_wifi_button">Turn on Wi-Fi</string>
@@ -508,6 +528,10 @@
     <string name="content_description_open_roller_shutter">Open roller shutter</string>
     <string name="content_description_stop_roller_shutter">Stop roller shutter</string>
     <string name="content_description_close_roller_shutter">Close roller shutter</string>
+    <string name="content_description_player_previous">Skip to previous track</string>
+    <string name="content_description_player_next">Skip to next track</string>
+    <string name="content_description_player_pause">Pause playback</string>
+    <string name="content_description_player_play">Start playback</string>
     <string name="content_description_open_color_wheel">Open color wheel</string>
     <string name="content_description_color_up">On or hold to increase brightness</string>
     <string name="content_description_color_down">Off or hold to decrease brightness</string>
@@ -558,13 +582,13 @@
 
     <!-- Item update widget -->
     <string name="item_update_widget_title">Item control</string>
-    <string name="item_update_widget_content_description">Widget for changing Item state</string>
+    <string name="item_update_widget_content_description">Change or read the state of an Item</string>
     <string name="item_update_widget_content_description_edit">Edit widget</string>
     <string name="item_update_widget">Widget</string>
     <!-- %1$s: Item label, %2$s: Action, e.g. "Lights: On". Use the source string as translation if the punctuation rules are the same as in English. -->
     <string name="item_update_widget_text">%1$s: %2$s</string>
-    <string name="item_update_widget_item_picker_title">Select an Item</string>
-    <string name="widget_show_state">Append current state to name</string>
+    <!-- Used in the widget preview -->
+    <string name="item_update_widget_preview_text">Open garage</string>
     <string name="widget_show_state_summary">The state is updated on the schedule that can be set in the settings under \"Send device information to server\"</string>
     <string name="widget_no_command">Don\'t send a command</string>
     <string name="error_getting_state">Error loading state</string>
@@ -607,7 +631,9 @@
     <string name="item_update_error_no_connection">No connection</string>
     <string name="item_update_error_couldnt_get_item_type">Couldn\'t get Item type</string>
     <string name="create_home_screen_widget_title">Create widget</string>
+    <string name="create_home_screen_widget_no_command">Show current state</string>
     <string name="create_home_screen_widget_not_supported">Please go to the widget menu on your home screen and create a widget from there</string>
+    <string name="analyse">Analyze</string>
 
     <!-- Data saver -->
     <string name="data_saver_title">Data saver</string>

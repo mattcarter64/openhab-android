@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,18 +14,18 @@
 package org.openhab.habdroid.ui
 
 import android.Manifest
-import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.graphics.BitmapFactory
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
+import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.CallSuper
 import androidx.annotation.ColorInt
 import androidx.annotation.StringRes
@@ -33,9 +33,18 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
-import androidx.core.app.ActivityCompat
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isInvisible
+import androidx.core.view.updatePadding
+import com.google.android.material.appbar.AppBarLayout
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.internal.EdgeToEdgeUtils
+import com.google.android.material.shape.MaterialShapeDrawable
 import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.Snackbar
 import kotlin.coroutines.CoroutineContext
@@ -48,7 +57,7 @@ import org.openhab.habdroid.R
 import org.openhab.habdroid.ui.preference.PreferencesActivity
 import org.openhab.habdroid.util.PrefKeys
 import org.openhab.habdroid.util.ScreenLockMode
-import org.openhab.habdroid.util.getActivityThemeId
+import org.openhab.habdroid.util.applyUserSelectedTheme
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.getScreenLockMode
 import org.openhab.habdroid.util.hasPermissions
@@ -59,53 +68,55 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
     override val coroutineContext: CoroutineContext get() = Dispatchers.Main + job
     protected open val forceNonFullscreen = false
     private var authPrompt: AuthPrompt? = null
+    private lateinit var coordinator: CoordinatorLayout
+    protected lateinit var layoutForSnackbar: View
+    private lateinit var toolbar: MaterialToolbar
+    private lateinit var content: View
+    lateinit var appBarLayout: AppBarLayout
+        private set
+    private lateinit var appBarBackground: Drawable
+    private lateinit var insetsController: WindowInsetsControllerCompat
+    private var lastInsets: WindowInsetsCompat? = null
     protected var lastSnackbar: Snackbar? = null
         private set
     private var snackbarQueue = mutableListOf<Snackbar>()
+
+    var appBarShown = true
+        set(value) {
+            field = value
+            // ScrollingViewBehavior assigns the AppBarLayout height as offset to other views (here: activity content)
+            // even if the ABL is set to 'gone', hence we have to do this ugly workaround
+            appBarLayout.layoutParams.height = if (value) ViewGroup.LayoutParams.WRAP_CONTENT else 0
+            applyPaddingsForWindowInsets()
+        }
 
     protected val isFullscreenEnabled: Boolean
         get() = getPrefs().getBoolean(PrefKeys.FULLSCREEN, false)
 
     @CallSuper
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(getActivityThemeId())
-
-        val colorPrimary = resolveThemedColor(R.attr.colorPrimary)
-
-        val taskDescription = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-                ActivityManager.TaskDescription.Builder()
-                    .setLabel(getString(R.string.app_name))
-                    .setIcon(R.mipmap.icon)
-                    .setPrimaryColor(colorPrimary)
-                    .build()
-            }
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> {
-                @Suppress("DEPRECATION")
-                ActivityManager.TaskDescription(
-                    getString(R.string.app_name),
-                    R.mipmap.icon,
-                    colorPrimary
-                )
-            }
-            else -> {
-                @Suppress("DEPRECATION")
-                ActivityManager.TaskDescription(
-                    getString(R.string.app_name),
-                    BitmapFactory.decodeResource(resources, R.mipmap.icon),
-                    colorPrimary
-                )
-            }
-        }
-
-        setTaskDescription(taskDescription)
-
+        applyUserSelectedTheme()
         super.onCreate(savedInstanceState)
     }
 
-    override fun onPostCreate(savedInstanceState: Bundle?) {
-        super.onPostCreate(savedInstanceState)
+    override fun setContentView(layoutResID: Int) {
+        super.setContentView(layoutResID)
+
+        toolbar = findViewById(R.id.openhab_toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        enableDrawingBehindStatusBar()
+
+        coordinator = findViewById(R.id.coordinator)
+        layoutForSnackbar = coordinator
+        content = findViewById(R.id.activity_content)
+        insetsController = WindowInsetsControllerCompat(window, coordinator)
+
         setNavigationBarColor()
+
+        appBarBackground = MaterialShapeDrawable.createWithElevationOverlay(this)
+        appBarLayout = findViewById(R.id.appbar_layout)
+        appBarLayout.statusBarForeground = appBarBackground
     }
 
     @CallSuper
@@ -126,23 +137,56 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
         setFullscreen()
     }
 
-    @Suppress("DEPRECATION") // TODO: Replace deprecated function
     fun setFullscreen(isEnabled: Boolean = isFullscreenEnabled) {
-        var uiOptions = window.decorView.systemUiVisibility
-        val flags = (
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_FULLSCREEN
-            )
-        uiOptions = if (isEnabled && !forceNonFullscreen) {
-            uiOptions or flags
+        if (isEnabled) {
+            insetsController.hide(WindowInsetsCompat.Type.systemBars())
+            insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
-            uiOptions and flags.inv()
+            insetsController.show(WindowInsetsCompat.Type.systemBars())
         }
-        window.decorView.systemUiVisibility = uiOptions
     }
 
-    @Suppress("DEPRECATION") // TODO: Replace deprecated function
+    private fun enableDrawingBehindStatusBar() {
+        EdgeToEdgeUtils.applyEdgeToEdge(window, true)
+        // Set up a listener to get the window insets so we can apply it to our views. It's important this listener
+        // is applied to the toolbar for a combination of reasons:
+        // 1) toolbar must be set fitsSystemWindows=true, as otherwise AppBarLayout does its own insets management,
+        //    which conflicts with ours
+        // 2) if the toolbar is set to fitsSystemWindow=true, it must not consume insets by itself, as otherwise
+        //    it applies the insets to its own padding, which we do not want
+        // 3) if the activity contains a DrawerLayout, it does also own insets handling, starting with its first child
+        // -> Conclusion is that a) we need a listener on toolbar which consumes the insets, and b) we need a listener
+        //    on something early in the hierarchy to get the full insets
+        // -> Putting the listener on the toolbar fulfills both a) and b)
+        ViewCompat.setOnApplyWindowInsetsListener(toolbar) { _, insets ->
+            lastInsets = insets
+            applyPaddingsForWindowInsets()
+            WindowInsetsCompat.CONSUMED
+        }
+    }
+
+    private fun applyPaddingsForWindowInsets() {
+        // On API levels < 30, insets visibility isn't factored in correctly, so getInsets() returns the
+        // status bar and navigation bar insets there even if they're not currently visible due to us enabling
+        // fullscreen mode. Work around this by manually checking the fullscreen mode in those cases.
+        val insets = if (Build.VERSION.SDK_INT < 30 && isFullscreenEnabled) {
+            Insets.NONE
+        } else {
+            val insetsType = WindowInsetsCompat.Type.statusBars() or
+                WindowInsetsCompat.Type.navigationBars() or
+                WindowInsetsCompat.Type.displayCutout()
+            lastInsets?.getInsets(insetsType) ?: Insets.NONE
+        }
+        // AppBarLayout uses its own insets calculations, which doesn't factor in status bar visibility on API < 30
+        // (basically the same issue as above). To make sure it doesn't draw the background of the status bar (which
+        // it thinks is present) over the actual toolbar, unset the status bar background if we think the status bar
+        // is not to be shown.
+        appBarLayout.statusBarForeground = if (insets.top > 0) appBarBackground else null
+        appBarLayout.updatePadding(top = insets.top)
+        content.updatePadding(top = if (appBarShown) 0 else insets.top)
+        coordinator.updatePadding(bottom = insets.bottom)
+    }
+
     private fun setNavigationBarColor() {
         val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         @ColorInt val black = ContextCompat.getColor(this, R.color.black)
@@ -157,17 +201,7 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
         }
         window.navigationBarColor = windowColor
 
-        val uiOptions = window.decorView.systemUiVisibility
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        } else {
-            0
-        }
-        window.decorView.systemUiVisibility = if (currentNightMode == Configuration.UI_MODE_NIGHT_YES) {
-            uiOptions and flags.inv()
-        } else {
-            uiOptions or flags
-        }
+        insetsController.isAppearanceLightNavigationBars = currentNightMode != Configuration.UI_MODE_NIGHT_YES
     }
 
     internal fun showSnackbar(
@@ -175,9 +209,10 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
         @StringRes messageResId: Int,
         @BaseTransientBottomBar.Duration duration: Int = Snackbar.LENGTH_LONG,
         @StringRes actionResId: Int = 0,
+        onDismissListener: (() -> Unit)? = null,
         onClickListener: (() -> Unit)? = null
     ) {
-        showSnackbar(tag, getString(messageResId), duration, actionResId, onClickListener)
+        showSnackbar(tag, getString(messageResId), duration, actionResId, onDismissListener, onClickListener)
     }
 
     protected fun showSnackbar(
@@ -185,6 +220,7 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
         message: String,
         @BaseTransientBottomBar.Duration duration: Int = Snackbar.LENGTH_LONG,
         @StringRes actionResId: Int = 0,
+        onDismissListener: (() -> Unit)? = null,
         onClickListener: (() -> Unit)? = null
     ) {
         fun showNextSnackbar() {
@@ -201,7 +237,7 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
             throw IllegalArgumentException("Tag is empty")
         }
 
-        val snackbar = Snackbar.make(findViewById(android.R.id.content), message, duration)
+        val snackbar = Snackbar.make(layoutForSnackbar, message, duration)
         if (actionResId != 0 && onClickListener != null) {
             snackbar.setAction(actionResId) { onClickListener() }
         }
@@ -214,6 +250,9 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
 
             override fun onDismissed(transientBottomBar: Snackbar?, event: Int) {
                 super.onDismissed(transientBottomBar, event)
+                if (event != Snackbar.Callback.DISMISS_EVENT_ACTION) {
+                    onDismissListener?.invoke()
+                }
                 showNextSnackbar()
             }
         })
@@ -240,7 +279,11 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
      *     * Google Play Store policy
      *     * Android R background location permission
      */
-    fun requestPermissionsIfRequired(permissions: Array<String>?, requestCode: Int) {
+    fun requestPermissionsIfRequired(
+        permissions: Array<String>?,
+        launcher: ActivityResultLauncher<Array<String>>,
+        rationaleDialogCancelCallback: (() -> Unit)? = null
+    ) {
         var permissionsToRequest = permissions
             ?.filter { !hasPermissions(arrayOf(it)) }
             ?.toTypedArray()
@@ -264,7 +307,7 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
                         R.string.settings_background_tasks_permission_denied_background_location,
                         packageManager.backgroundPermissionOptionLabel
                     ),
-                    Snackbar.LENGTH_LONG,
+                    Snackbar.LENGTH_INDEFINITE,
                     android.R.string.ok
                 ) {
                     Intent(Settings.ACTION_APPLICATION_SETTINGS).apply {
@@ -286,19 +329,15 @@ abstract class AbstractBaseActivity : AppCompatActivity(), CoroutineScope {
                 .setMessage(R.string.settings_location_permissions_required)
                 .setPositiveButton(R.string.settings_background_tasks_permission_allow) { _, _ ->
                     Log.d(TAG, "Request ${permissionsToRequest.contentToString()} permission")
-                    ActivityCompat.requestPermissions(this, permissionsToRequest, requestCode)
+                    launcher.launch(permissionsToRequest)
                 }
                 .setNegativeButton(android.R.string.cancel) { _, _ ->
-                    onRequestPermissionsResult(
-                        requestCode,
-                        permissionsToRequest,
-                        intArrayOf(PackageManager.PERMISSION_DENIED)
-                    )
+                    rationaleDialogCancelCallback?.invoke()
                 }
                 .show()
         } else {
             Log.d(TAG, "Request ${permissionsToRequest.contentToString()} permission")
-            ActivityCompat.requestPermissions(this, permissionsToRequest, requestCode)
+            launcher.launch(permissionsToRequest)
         }
     }
 

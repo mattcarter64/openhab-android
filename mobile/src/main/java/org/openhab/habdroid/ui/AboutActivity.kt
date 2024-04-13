@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -43,9 +43,6 @@ class AboutActivity : AbstractBaseActivity(), FragmentManager.OnBackStackChanged
 
         setContentView(R.layout.activity_about)
         supportFragmentManager.addOnBackStackChangedListener(this)
-
-        setSupportActionBar(findViewById(R.id.openhab_toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         if (savedInstanceState == null) {
             val f = AboutMainFragment()
@@ -154,7 +151,7 @@ class AboutActivity : AbstractBaseActivity(), FragmentManager.OnBackStackChanged
             appCard.addItem(MaterialAboutActionItem.Builder()
                 .text(R.string.about_privacy_policy)
                 .icon(R.drawable.ic_security_grey_24dp)
-                .setOnClickAction(makeClickRedirect(context, "https://www.openhabfoundation.org/privacy.html"))
+                .setOnClickAction(makeClickRedirect(context, "https://www.openhabfoundation.org/privacy.html#android-app"))
                 .build())
 
             val ohCommunityCard = MaterialAboutCard.Builder()

@@ -33,6 +33,8 @@ body:
     attributes:
       label: Post-release checklist
       options:
+        - label: Release in Play Store in the open test track
+          required: false
         - label: Release in Play Store to 20%
           required: false
         - label: Release in Play Store to 50%

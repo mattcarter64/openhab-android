@@ -6,10 +6,10 @@
     <string name="app_preferences_name">إعدادات</string>
     <!-- Main menu items -->
     <string name="mainmenu_openhab_preferences">إعدادات</string>
+    <!-- %1$s: Name of a UI, %2$s: Server name. Example: HABPanel (House). Use the source string as translation if the punctuation rules are the same as in English. -->
     <string name="app_notifications">إشعارات</string>
     <string name="habpanel_error">حدث خطأ أثناء تحميل HABPanel</string>
     <string name="mainmenu_openhab_selectsitemap">حدد Sitemap الافتراضي</string>
-    <string name="mainmenu_openhab_clearcache">إزالة الصور المؤقته</string>
     <!-- App settings strings -->
     <string name="settings_connection_title">اتصال</string>
     <string name="settings_display_title">عرض</string>
@@ -146,6 +146,7 @@
     <!-- Themes -->
     <string name="theme_name_light">خفيف</string>
     <string name="theme_name_dark">داكن</string>
+    <string name="color_scheme_name_default">افتراضي</string>
     <!-- Chart -->
     <!-- NFC -->
     <string name="nfc_action_on">تشغيل</string>
@@ -170,9 +171,6 @@
     <string name="about_community">مجتمع openHAB</string>
     <string name="about_translation">ساعدنا في ترجمة openHAB</string>
     <string name="about_privacy_policy">سياسة الخصوصية</string>
-    <string name="set">تعيين</string>
-    <string name="cancel">إلغاء</string>
-    <string name="close">إغلاق</string>
     <string name="try_again_button">أعد المحاولة</string>
     <string name="enable_wifi_button">تشغيل الوايفي</string>
     <string name="go_to_settings_button">اذهب إلى الإعدادات</string>
@@ -216,6 +214,7 @@
     <string name="turn_on">تشغيل</string>
     <!-- Item update widget -->
     <!-- %1$s: Item label, %2$s: Action, e.g. "Lights: On". Use the source string as translation if the punctuation rules are the same as in English. -->
+    <!-- Used in the widget preview -->
     <!-- %1$s: Item label, %2$s: State-->
     <!-- Data saver -->
     <string name="widget_type_video">فيديو</string>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -30,7 +30,7 @@ import org.openhab.habdroid.R
 import org.openhab.habdroid.util.AsyncServiceResolver
 import org.openhab.habdroid.util.PrefKeys
 import org.openhab.habdroid.util.addToPrefs
-import org.openhab.habdroid.util.getActivityThemeId
+import org.openhab.habdroid.util.applyUserSelectedTheme
 import org.openhab.habdroid.util.getConfiguredServerIds
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.resolveThemedColor
@@ -41,7 +41,7 @@ class IntroActivity : AppIntro(), CoroutineScope {
     override val coroutineContext: CoroutineContext get() = Dispatchers.Main + job
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(getActivityThemeId())
+        applyUserSelectedTheme()
         super.onCreate(savedInstanceState)
 
         if (getPrefs().getBoolean(PrefKeys.RECENTLY_RESTORED, false)) {

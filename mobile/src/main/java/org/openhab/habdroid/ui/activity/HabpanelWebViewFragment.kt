@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,10 +18,9 @@ import org.openhab.habdroid.ui.MainActivity
 
 class HabpanelWebViewFragment : AbstractWebViewFragment() {
     override val titleRes = R.string.mainmenu_openhab_habpanel
-    override val multiServerTitleRes = R.string.mainmenu_openhab_habpanel_on_server
     override val errorMessageRes = R.string.habpanel_error
     override val urlToLoad = "/habpanel/index.html"
-    override val urlForError = "/rest/events"
+    override val pathForError = "/rest/events"
     override val lockDrawer = true
     override val shortcutIcon = R.mipmap.ic_shortcut_habpanel
     override val shortcutAction = MainActivity.ACTION_HABPANEL_SELECTED

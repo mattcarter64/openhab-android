@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -19,7 +19,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import androidx.drawerlayout.widget.DrawerLayout
 
-class LockableDrawerLayout constructor(context: Context, attrs: AttributeSet?) : DrawerLayout(context, attrs) {
+class LockableDrawerLayout(context: Context, attrs: AttributeSet?) : DrawerLayout(context, attrs) {
     var isSwipeDisabled = false
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {

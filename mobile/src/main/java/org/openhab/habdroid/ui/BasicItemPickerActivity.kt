@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -28,12 +28,12 @@ class BasicItemPickerActivity(
     override var hintButtonMessageId: Int = 0,
     override var hintIconId: Int = 0
 ) : AbstractItemPickerActivity() {
-    @LayoutRes override val additionalConfigLayoutRes: Int = 0
     private var showNoCommand = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         initialHighlightItemName = intent.getStringExtra("item")
-        showNoCommand = intent.getBooleanExtra("show_no_command", false)
+        showNoCommand = intent.getBooleanExtra("show_no_command", showNoCommand)
+        hideReadOnly = intent.getBooleanExtra("hide_read_only", hideReadOnly)
         super.onCreate(savedInstanceState)
     }
 

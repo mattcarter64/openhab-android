@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -25,7 +25,7 @@ import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.preference.DialogPreference
 import androidx.preference.PreferenceDialogFragmentCompat
-import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.google.android.material.textfield.TextInputLayout
 import org.openhab.habdroid.R
@@ -34,7 +34,7 @@ import org.openhab.habdroid.model.toWifiSsids
 import org.openhab.habdroid.ui.preference.CustomDialogPreference
 import org.openhab.habdroid.util.getCurrentWifiSsid
 
-class WifiSsidInputPreference constructor(context: Context, attrs: AttributeSet) :
+class WifiSsidInputPreference(context: Context, attrs: AttributeSet) :
     DialogPreference(context, attrs), CustomDialogPreference {
     private var value: Pair<String, Boolean>? = null
 
@@ -71,7 +71,7 @@ class WifiSsidInputPreference constructor(context: Context, attrs: AttributeSet)
     class PrefFragment : PreferenceDialogFragmentCompat() {
         private lateinit var editorWrapper: TextInputLayout
         private lateinit var editor: MaterialAutoCompleteTextView
-        private lateinit var restrictButton: SwitchMaterial
+        private lateinit var restrictButton: MaterialSwitch
 
         override fun onCreateDialogView(context: Context): View {
             val inflater = LayoutInflater.from(activity)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -51,26 +51,44 @@ class WidgetTest {
 
     @Test
     fun getIconPath_iconExists_returnIconUrlFromImages() {
-        assertEquals("images/groupicon.png", sutXml[0].icon?.toUrl(false, IconFormat.Png))
-        assertEquals("images/groupicon.png", sutXml[0].icon?.toUrl(true, IconFormat.Png))
+        assertEquals("images/groupicon.png", sutXml[0].icon?.toUrl(false, IconFormat.Png, 64))
+        assertEquals("images/groupicon.png", sutXml[0].icon?.toUrl(true, IconFormat.Png, 64))
     }
 
     @Test
     fun testGetIconPath() {
-        assertEquals("icon/groupicon?format=PNG&anyFormat=true&state=OFF",
-            sut1[0].icon?.toUrl(true, IconFormat.Png))
-        assertEquals("icon/groupicon?format=SVG&anyFormat=true&state=ON",
-            sut2[0].icon?.toUrl(true, IconFormat.Svg))
-        assertEquals("icon/slider?format=SVG&anyFormat=true&state=81",
-            sut3[1].icon?.toUrl(true, IconFormat.Svg))
-        assertEquals("Rollersutter icon must always be 0 to 100, not ON/OFF",
-            "icon/rollershutter?format=SVG&anyFormat=true&state=0",
-            sut3[2].icon?.toUrl(true, IconFormat.Svg))
-        assertEquals("icon/rollershutter?format=SVG&anyFormat=true&state=42",
-            sut3[3].icon?.toUrl(true, IconFormat.Svg))
-        assertEquals("If data saver is active, icon paths must not contain a state",
-            "icon/rollershutter?format=SVG&anyFormat=true",
-            sut3[3].icon?.toUrl(false, IconFormat.Svg))
+        assertEquals(
+            "icon/groupicon?format=PNG&anyFormat=true&iconset=classic&state=OFF",
+            sut1[0].icon?.toUrl(true, IconFormat.Png, 64)
+        )
+        assertEquals(
+            "icon/groupicon?format=SVG&anyFormat=true&iconset=classic&state=ON",
+            sut2[0].icon?.toUrl(true, IconFormat.Svg, 64)
+        )
+        assertEquals(
+            "icon/slider?format=SVG&anyFormat=true&iconset=classic&state=81",
+            sut3[1].icon?.toUrl(true, IconFormat.Svg, 64)
+        )
+        assertEquals(
+            "Rollersutter icon must always be 0 to 100, not ON/OFF",
+            "icon/rollershutter?format=SVG&anyFormat=true&iconset=classic&state=0",
+            sut3[2].icon?.toUrl(true, IconFormat.Svg, 64)
+        )
+        assertEquals(
+            "Iconset must be extracted from icon name",
+            "icon/rollershutter?format=SVG&anyFormat=true&iconset=mdi&state=42",
+            sut3[3].icon?.toUrl(true, IconFormat.Svg, 64)
+        )
+        assertEquals(
+            "Iconset must be extracted from icon name",
+            "icon/frame?format=SVG&anyFormat=true&iconset=classic",
+            sut3[0].icon?.toUrl(false, IconFormat.Svg, 64)
+        )
+        assertEquals(
+            "If data saver is active, icon paths must not contain a state",
+            "icon/rollershutter?format=SVG&anyFormat=true&iconset=mdi",
+            sut3[3].icon?.toUrl(false, IconFormat.Svg, 64 )
+        )
     }
 
     @Test
@@ -166,13 +184,14 @@ class WidgetTest {
 
     @Test
     fun testGetMinValue() {
-        assertEquals(0.0f, sut1[0].minValue)
-        assertEquals(99.7f, sut2[0].minValue)
+        assertEquals(0f, sut1[0].minValue)
+        // this is invalid in JSON (max < min), expected to be adjusted
+        assertEquals(-10f, sut2[0].minValue)
     }
 
     @Test
     fun testGetMaxValue() {
-        assertEquals(10.0f, sut1[0].maxValue)
+        assertEquals(10f, sut1[0].maxValue)
         // this is invalid in JSON (max < min), expected to be adjusted
         assertEquals(99.7f, sut2[0].maxValue)
     }
@@ -348,7 +367,7 @@ class WidgetTest {
                   'widgetId': '0202_0',
                   'type': 'Frame',
                   'label': 'Percent-based Widgets',
-                  'icon': 'frame',
+                  'icon': 'oh:frame',
                   'mappings': [],
                   'widgets': [ {
                     'widgetId': '0202_0_0',
@@ -394,7 +413,7 @@ class WidgetTest {
                     'widgetId': '0202_0_0_1_2',
                     'type': 'Group',
                     'label': 'Shutters',
-                    'icon': 'rollershutter',
+                    'icon': 'oh:mdi:rollershutter',
                     'mappings': [],
                     'item': {
                       'members': [],

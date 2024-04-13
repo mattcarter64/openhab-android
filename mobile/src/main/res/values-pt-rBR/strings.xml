@@ -11,19 +11,12 @@
     <string name="mainmenu_openhab_sitemaps">Sitemaps</string>
     <string name="mainmenu_openhab_preferences">Configurações</string>
     <string name="mainmenu_openhab_habpanel">HABPanel</string>
-    <string name="mainmenu_openhab_habpanel_on_server">HABPanel (%s)</string>
-    <string name="mainmenu_openhab_oh3_ui">openHAB 3 UI</string>
-    <string name="mainmenu_openhab_oh3_ui_on_server">openHAB 3 UI (%s)</string>
     <string name="mainmenu_openhab_frontail">Frontail</string>
-    <string name="mainmenu_openhab_frontail_on_server">Frontail (%s)</string>
+    <!-- %1$s: Name of a UI, %2$s: Server name. Example: HABPanel (House). Use the source string as translation if the punctuation rules are the same as in English. -->
     <string name="app_notifications">Notificações</string>
-    <string name="app_notifications_on_server">Notificações (%s)</string>
     <string name="habpanel_error">Ocorreu um erro ao carregar o HABPanel</string>
-    <string name="oh3_ui_error">Ocorreu um erro ao carregar openHAB 3 UI</string>
     <string name="frontail_error">Ocorreu um erro ao carregar o Frontail. Por favor, note que não está disponível via openHAB Cloud.</string>
-    <string name="frontail_pref_summary">Frontail deve ser executado na porta padrão 9001. É empacotado com openHABian ou pode ser instalado manualmente.</string>
     <string name="mainmenu_openhab_selectsitemap">Selecione o sitemap padrão</string>
-    <string name="mainmenu_openhab_clearcache">Limpar cache das imagens</string>
     <!-- App settings strings -->
     <string name="settings_connection_title">Conexão</string>
     <string name="settings_display_title">Configurações de visualização</string>
@@ -46,8 +39,6 @@
     <string name="start_page_title">Página inicial</string>
     <string name="drawer_entries">Itens do menu lateral</string>
     <string name="settings_openhab_theme">Tema</string>
-    <string name="settings_accent_color">Cor de destaque</string>
-    <string name="settings_select_a_color">Selecione uma cor</string>
     <string name="settings_openhab_fullscreen">Tela cheia</string>
     <string name="settings_openhab_icon_format">Formato de ícone</string>
     <string name="settings_openhab_icon_format_png">Bitmap</string>
@@ -156,7 +147,7 @@
     <string name="error_http_to_https_port">Final inesperado do fluxo. Você está tentando se conectar a uma porta HTTPS através de HTTP?</string>
     <string name="webview_ssl">Atualmente, este app não suporta SSL certificados auto-assinados para widgets Webview</string>
     <!-- The following strings are referenced via reflection in Context.getHumanReadableErrorMessage -->
-    <string name="error_http_code_401" tools:keep="@string/error_http_code_401">Falha de autenticação. Por favor, verifique usuário, senha e o certificado SSL do cliente fornecido (resposta HTTP %d).</string>
+    <string name="error_http_code_404" tools:keep="@string/error_http_code_404">Não encontrado (código HTTP %d)</string>
     <string name="error_http_code_414" tools:keep="@string/error_http_code_414">URL é muito longa. Por favor, use o endereço IP ou uma URL mais curta (código HTTP %d).</string>
     <string name="error_http_code_426" tools:keep="@string/error_http_code_426">HTTPS é necessário. Por favor, altere a URL (código HTTP %d).</string>
     <!-- Nginx specific codes, but since it is the recommended reverse proxy, we should check for them: https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#nginx -->
@@ -332,6 +323,7 @@
     <string name="theme_name_system">Seguir o sistema</string>
     <string name="theme_name_battery_saver">Modo escuro na economia de bateria</string>
     <string name="theme_name_black">Preto</string>
+    <string name="color_scheme_name_default">Padrão</string>
     <!-- Chart -->
     <string name="chart_activity_title">Gráfico</string>
     <string name="chart_activity_hide_legend">Ocultar legenda</string>
@@ -391,9 +383,6 @@
     <string name="about_privacy_policy">Política de privacidade</string>
     <string name="about_rate_this_app">Avalie este aplicativo</string>
     <string name="settings_troubleshooting_title">Solução de problemas</string>
-    <string name="set">Definir</string>
-    <string name="cancel">Cancelar</string>
-    <string name="close">Fechar</string>
     <string name="undo">Desfazer</string>
     <string name="try_again_button">Tente novamente</string>
     <string name="enable_wifi_button">Ative o Wi-Fi</string>
@@ -469,12 +458,11 @@
     <string name="press_back_to_exit">Pressione novamente para sair</string>
     <!-- Item update widget -->
     <string name="item_update_widget_title">Controle de Item</string>
-    <string name="item_update_widget_content_description">Widget para alterar estado do Item</string>
     <string name="item_update_widget_content_description_edit">Editar widget</string>
     <string name="item_update_widget">Widget</string>
     <!-- %1$s: Item label, %2$s: Action, e.g. "Lights: On". Use the source string as translation if the punctuation rules are the same as in English. -->
     <string name="item_update_widget_text">%1$s: %2$s</string>
-    <string name="item_update_widget_item_picker_title">Selecione um Item</string>
+    <!-- Used in the widget preview -->
     <!-- %1$s: Item label, %2$s: State-->
     <string name="item_update_success_message_generic">%1$s foi alterado para %2$s</string>
     <string name="item_update_success_message_on">%s foi ligado</string>

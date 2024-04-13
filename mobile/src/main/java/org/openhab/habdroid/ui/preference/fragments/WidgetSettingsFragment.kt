@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -17,18 +17,22 @@ import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.edit
 import androidx.core.os.bundleOf
+import androidx.core.view.MenuProvider
+import androidx.lifecycle.Lifecycle
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
-import androidx.preference.SwitchPreference
+import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.snackbar.Snackbar
 import org.openhab.habdroid.R
 import org.openhab.habdroid.background.BackgroundTasksManager
@@ -39,17 +43,17 @@ import org.openhab.habdroid.ui.preference.PreferencesActivity
 import org.openhab.habdroid.ui.preference.widgets.CustomInputTypePreference
 import org.openhab.habdroid.ui.preference.widgets.ItemAndStatePreference
 import org.openhab.habdroid.util.CacheManager
-import org.openhab.habdroid.util.PrefKeys
 
 class WidgetSettingsFragment :
-    PreferencesActivity.AbstractSettingsFragment(),
-    PreferencesActivity.ConfirmLeaveDialogFragment.Callback {
+    AbstractSettingsFragment(),
+    PreferencesActivity.ConfirmLeaveDialogFragment.Callback,
+    MenuProvider {
     override val titleResId: Int @StringRes get() = R.string.item_update_widget
     private var widgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
 
     private lateinit var itemAndStatePref: ItemAndStatePreference
     private lateinit var namePref: CustomInputTypePreference
-    private lateinit var showStatePref: SwitchPreference
+    private lateinit var showStatePref: SwitchPreferenceCompat
     private lateinit var themePref: ListPreference
     private var itemAndStatePrefCallback = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -79,7 +83,7 @@ class WidgetSettingsFragment :
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setHasOptionsMenu(true)
+
         activity?.setResult(AppCompatActivity.RESULT_CANCELED)
 
         widgetId = requireArguments().getInt("id", AppWidgetManager.INVALID_APPWIDGET_ID)
@@ -93,11 +97,11 @@ class WidgetSettingsFragment :
             override fun handleOnBackPressed() {
                 val oldData = ItemUpdateWidget.getInfoForWidget(requireContext(), widgetId)
                 val newData = getCurrentPrefsAsWidgetData()
-                if (oldData != newData) {
-                    PreferencesActivity.ConfirmLeaveDialogFragment().show(childFragmentManager, "dialog_confirm_leave")
-                } else {
+                if (oldData.nearlyEquals(newData)) {
                     isEnabled = false
                     parentActivity.onBackPressedDispatcher.onBackPressed()
+                } else {
+                    PreferencesActivity.ConfirmLeaveDialogFragment().show(childFragmentManager, "dialog_confirm_leave")
                 }
             }
         }
@@ -105,18 +109,22 @@ class WidgetSettingsFragment :
         parentActivity.onBackPressedDispatcher.addCallback(this, backCallback)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        super.onCreateOptionsMenu(menu, inflater)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
+        return super.onCreateView(inflater, container, savedInstanceState)
+    }
+
+    override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.prefs_save, menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+    override fun onMenuItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.save -> {
                 onLeaveAndSave()
                 true
             }
-            else -> super.onOptionsItemSelected(item)
+            else -> false
         }
     }
 
@@ -125,13 +133,13 @@ class WidgetSettingsFragment :
         itemAndStatePref = findPreference("widget_item_and_action")!!
         namePref = findPreference("widget_name")!!
         showStatePref = findPreference("show_state")!!
-        themePref = findPreference("widget_theme")!!
 
         namePref.summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
         itemAndStatePref.setOnPreferenceClickListener {
             val intent = Intent(it.context, BasicItemPickerActivity::class.java)
             intent.putExtra("item", itemAndStatePref.item)
             intent.putExtra("show_no_command", true)
+            intent.putExtra("hide_read_only", false)
             itemAndStatePrefCallback.launch(intent)
             true
         }
@@ -153,7 +161,6 @@ class WidgetSettingsFragment :
             widgetLabel = namePref.text.orEmpty(),
             mappedState = itemAndStatePref.mappedState.orEmpty(),
             icon = itemAndStatePref.icon.toOH2IconResource(),
-            theme = themePref.value,
             showState = showStatePref.isChecked
         )
     }
@@ -168,7 +175,6 @@ class WidgetSettingsFragment :
         itemAndStatePref.icon = data.icon?.icon
         namePref.text = data.widgetLabel
         showStatePref.isChecked = data.showState
-        themePref.value = data.theme
 
         updateItemAndStatePrefSummary()
     }
@@ -192,9 +198,6 @@ class WidgetSettingsFragment :
         }
 
         ItemUpdateWidget.saveInfoForWidget(context, newData, widgetId)
-        prefs.edit {
-            putString(PrefKeys.LAST_WIDGET_THEME, newData.theme)
-        }
 
         BackgroundTasksManager.schedulePeriodicTrigger(context, false)
 

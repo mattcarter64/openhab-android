@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -234,10 +234,11 @@ class BackgroundTasksManager : BroadcastReceiver() {
         val primaryServer: Boolean
     ) : Parcelable
 
-    private class PrefsListener constructor(private val context: Context) :
+    private class PrefsListener(private val context: Context) :
         SharedPreferences.OnSharedPreferenceChangeListener {
-        override fun onSharedPreferenceChanged(prefs: SharedPreferences, key: String) {
+        override fun onSharedPreferenceChanged(prefs: SharedPreferences, key: String?) {
             when {
+                key == null -> return
                 key == PrefKeys.DEMO_MODE && prefs.isDemoModeEnabled() -> {
                     // Demo mode was enabled -> cancel all uploads and clear DB
                     // to clear out notifications
@@ -305,11 +306,14 @@ class BackgroundTasksManager : BroadcastReceiver() {
             PrefKeys.SEND_WIFI_SSID,
             PrefKeys.SEND_DND_MODE
         )
+        // These package names must be added to the manifest as well
         private val IGNORED_PACKAGES_FOR_ALARM = listOf(
             "net.dinglisch.android.taskerm",
             "com.android.providers.calendar",
             "com.android.calendar",
-            "com.samsung.android.calendar"
+            "com.samsung.android.calendar",
+            "com.miui.securitycenter",
+            "org.thoughtcrime.securesms"
         )
         private val VALUE_GETTER_MAP = HashMap<String, (Context, Intent?) -> ItemUpdateWorker.ValueWithInfo?>()
 
@@ -454,9 +458,9 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 .map { key -> prefs.getStringOrNull(key).toItemUpdatePrefValue() }
                 .any { value -> value.first }
             val widgetShowsState = AppWidgetManager.getInstance(context)
-                .getAppWidgetIds(ComponentName(context, ItemUpdateWidget::class.java))
-                .map { id -> ItemUpdateWidget.getInfoForWidget(context, id) }
-                .any { info -> info.showState }
+                ?.getAppWidgetIds(ComponentName(context, ItemUpdateWidget::class.java))
+                ?.map { id -> ItemUpdateWidget.getInfoForWidget(context, id) }
+                ?.any { info -> info.showState } ?: false
 
             if (!periodicWorkIsNeeded &&
                 !CloudMessagingHelper.needsPollingForNotifications(context) &&
@@ -481,10 +485,6 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 return
             }
 
-            val notChargingConstraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-
             val repeatInterval = max(
                 prefs.getBackgroundTaskScheduleInMillis(),
                 PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS
@@ -500,16 +500,17 @@ class BackgroundTasksManager : BroadcastReceiver() {
             val notChargingWorkRequest = PeriodicWorkRequest.Builder(PeriodicItemUpdateWorker::class.java,
                 repeatInterval, TimeUnit.MILLISECONDS,
                 flexInterval, TimeUnit.MILLISECONDS)
-                .setConstraints(notChargingConstraints)
+                .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
                 .addTag(WORKER_TAG_PERIODIC_TRIGGER)
                 .addTag(WORKER_TAG_PERIODIC_TRIGGER_NOT_CHARGING)
                 .build()
 
-            val chargingConstraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
-                .setRequiresCharging(true)
-                .build()
+            val chargingConstraints = Constraints(
+                requiredNetworkType = NetworkType.CONNECTED,
+                requiresBatteryNotLow = true,
+                requiresCharging = true
+            )
+
             val chargingWorkRequest = PeriodicWorkRequest.Builder(PeriodicItemUpdateWorker::class.java,
                     PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS, TimeUnit.MILLISECONDS,
                     PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS, TimeUnit.MILLISECONDS)
@@ -520,12 +521,12 @@ class BackgroundTasksManager : BroadcastReceiver() {
 
             workManager.enqueueUniquePeriodicWork(
                 WORKER_TAG_PERIODIC_TRIGGER_NOT_CHARGING,
-                ExistingPeriodicWorkPolicy.REPLACE,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 notChargingWorkRequest
             )
             workManager.enqueueUniquePeriodicWork(
                 WORKER_TAG_PERIODIC_TRIGGER_CHARGING,
-                ExistingPeriodicWorkPolicy.REPLACE,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 chargingWorkRequest
             )
         }

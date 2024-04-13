@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -107,8 +107,8 @@ class ItemTest {
     @Test
     fun getCommandOptions() {
         val sut = itemWithCommandOptions.toItem()
-        assertEquals(LabeledValue("1", "One"), sut.options!!.component1())
-        assertEquals(LabeledValue("2", "Two"), sut.options!!.component2())
+        assertEquals(LabeledValue("1", "One", "switch".toOH2IconResource(), 1, 2), sut.options!!.component1())
+        assertEquals(LabeledValue("2", "Two", null, 0, 0), sut.options!!.component2())
     }
 
     @Test
@@ -177,7 +177,7 @@ class ItemTest {
             { 'state': '52.5200066,13.4029540', 'type': 'Location', 'name': 'GroupDemoLocation',
               'label': 'Location 1', 'groupNames': [ 'LocationGroup' ] },
             { 'state': '52.5200066,13.4029540', 'type': 'Location', 'name': 'GroupDemoLocation',
-              'label': 'Location 2', 'groupNames': [ 'LocationGroup' ] },
+              'label': 'Location 2 [foo]', 'groupNames': [ 'LocationGroup' ] },
             ], 'state': 'NULL', 'type': 'Group', 'name': 'LocationGroup', 'label': 'Location Group',
                 'tags': [ "Lighting", "Switchable", "Timestamp", "foobar" ] }
             """.trimIndent()
@@ -208,7 +208,10 @@ class ItemTest {
                   'commandOptions': [
                     {
                       'command': '1',
-                      'label': 'One'
+                      'label': 'One',
+                      'icon': 'switch',
+                      'row': 1,
+                      'column': 2
                     },
                     {
                       'command': '2',

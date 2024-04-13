@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,6 +21,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Context.CLIPBOARD_SERVICE
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -44,6 +45,7 @@ import androidx.core.graphics.drawable.IconCompat
 import androidx.core.net.toUri
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
+import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -54,6 +56,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.openhab.habdroid.R
 import org.openhab.habdroid.core.OpenHabApplication
+import org.openhab.habdroid.core.connection.Connection
 import org.openhab.habdroid.core.connection.ConnectionFactory
 import org.openhab.habdroid.model.LinkedPage
 import org.openhab.habdroid.model.Widget
@@ -61,8 +64,8 @@ import org.openhab.habdroid.ui.homescreenwidget.ItemUpdateWidget
 import org.openhab.habdroid.ui.widget.ContextMenuAwareRecyclerView
 import org.openhab.habdroid.ui.widget.RecyclerViewSwipeRefreshLayout
 import org.openhab.habdroid.util.CacheManager
-import org.openhab.habdroid.util.DataUsagePolicy
 import org.openhab.habdroid.util.HttpClient
+import org.openhab.habdroid.util.IconBackground
 import org.openhab.habdroid.util.ImageConversionPolicy
 import org.openhab.habdroid.util.PendingIntent_Mutable
 import org.openhab.habdroid.util.PrefKeys
@@ -70,18 +73,24 @@ import org.openhab.habdroid.util.SuggestedCommandsFactory
 import org.openhab.habdroid.util.Util
 import org.openhab.habdroid.util.dpToPixel
 import org.openhab.habdroid.util.getActiveServerId
+import org.openhab.habdroid.util.getIconFallbackColor
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.getStringOrEmpty
-import org.openhab.habdroid.util.getStringOrFallbackIfEmpty
 import org.openhab.habdroid.util.openInBrowser
+import org.openhab.habdroid.util.useCompactSitemapLayout
 
 /**
  * This class is apps' main fragment which displays list of openHAB
  * widgets from sitemap page with further navigation through sitemap and everything else!
  */
 
-class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
-    OpenHabApplication.OnDataUsagePolicyChangedListener {
+class WidgetListFragment :
+    Fragment(),
+    WidgetAdapter.ItemClickListener,
+    WidgetAdapter.FragmentPresenter,
+    AbstractWidgetBottomSheet.ConnectionGetter,
+    OpenHabApplication.OnDataUsagePolicyChangedListener,
+    SharedPreferences.OnSharedPreferenceChangeListener {
     @VisibleForTesting lateinit var recyclerView: RecyclerView
     private lateinit var refreshLayout: RecyclerViewSwipeRefreshLayout
     private lateinit var emptyPageView: View
@@ -122,7 +131,7 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
 
         val activity = activity as MainActivity
         adapter = activity.connection?.let { conn ->
-            WidgetAdapter(activity, activity.serverProperties!!.flags, conn, this)
+            WidgetAdapter(activity, activity.serverProperties!!.flags, conn, this, this)
         }
 
         layoutManager = LinearLayoutManager(activity)
@@ -130,7 +139,6 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
 
         recyclerView = view.findViewById(R.id.recyclerview)
         recyclerView.setRecycledViewPool(activity.viewPool)
-        recyclerView.addItemDecoration(WidgetAdapter.WidgetItemDecoration(view.context))
         recyclerView.layoutManager = layoutManager
         recyclerView.adapter = adapter
         (recyclerView.itemAnimator as SimpleItemAnimator).supportsChangeAnimations = false
@@ -160,11 +168,16 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
         activity.triggerPageUpdate(displayPageUrl, false)
         startOrStopVisibleViewHolders(true)
         (activity.applicationContext as OpenHabApplication).registerSystemDataSaverStateChangedListener(this)
+
+        val prefs = activity.getPrefs()
+        adapter?.setCompactMode(prefs.useCompactSitemapLayout())
+        prefs.registerOnSharedPreferenceChangeListener(this)
     }
 
     override fun onStop() {
         super.onStop()
         (requireContext().applicationContext as OpenHabApplication).unregisterSystemDataSaverStateChangedListener(this)
+        requireActivity().getPrefs().unregisterOnSharedPreferenceChangeListener(this)
     }
 
     override fun onPause() {
@@ -195,6 +208,26 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
             return true
         }
         return false
+    }
+
+    override fun getConnection(): Connection? {
+        return adapter?.connection
+    }
+
+    override fun showBottomSheet(sheet: AbstractWidgetBottomSheet, widget: Widget) {
+        sheet.arguments = AbstractWidgetBottomSheet.createArguments(widget)
+        sheet.show(childFragmentManager, "${sheet.javaClass.simpleName}-${widget.id}")
+    }
+
+    override fun showSelectionFragment(fragment: DialogFragment, widget: Widget) {
+        fragment.show(childFragmentManager, "Selection-${widget.id}")
+    }
+
+    override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {
+        if (key == PrefKeys.SITEMAP_COMPACT_MODE && prefs != null) {
+            // Make the adapter reload views according to the new mode
+            adapter?.setCompactMode(prefs.useCompactSitemapLayout())
+        }
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {
@@ -242,16 +275,50 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
             menu.add(Menu.NONE, CONTEXT_MENU_ID_OPEN_IN_MAPS, Menu.NONE, R.string.open_in_maps)
         }
 
-        if (hasCommandOptions) {
+        // Offer widget for all Items. For read-only Items the "Show state" widget is useful.
+        if (widget.item != null) {
+            menu.add(
+                Menu.NONE,
+                CONTEXT_MENU_ID_SHOW_CHART,
+                Menu.NONE,
+                R.string.analyse
+            ).setOnMenuItemClickListener {
+                val mainActivity = activity as MainActivity
+                val intent = Intent(mainActivity, ChartWidgetActivity::class.java)
+                intent.putExtra(ChartWidgetActivity.EXTRA_WIDGET, widget)
+                intent.putExtra(ChartWidgetActivity.EXTRA_SERVER_FLAGS, mainActivity.serverProperties?.flags)
+                mainActivity.startActivity(intent)
+                return@setOnMenuItemClickListener true
+            }
+
+
             val widgetMenu = menu.addSubMenu(
-                Menu.NONE, CONTEXT_MENU_ID_CREATE_HOME_SCREEN_WIDGET,
+                Menu.NONE,
+                CONTEXT_MENU_ID_CREATE_HOME_SCREEN_WIDGET,
                 Menu.NONE,
                 R.string.create_home_screen_widget_title
             )
             widgetMenu.setHeaderTitle(R.string.item_picker_dialog_title)
             populateStatesMenu(widgetMenu, activity, suggestedCommands, false) { state, mappedState, _ ->
-                requestPinAppWidget(activity, widget, state, mappedState)
+                requestPinAppWidget(
+                    context = activity,
+                    widget = widget,
+                    state = state,
+                    mappedState = mappedState,
+                    showState = false
+                )
             }
+            widgetMenu.add(Menu.NONE, Int.MAX_VALUE, Menu.NONE, R.string.create_home_screen_widget_no_command)
+                .setOnMenuItemClickListener {
+                    requestPinAppWidget(
+                        context = activity,
+                        widget = widget,
+                        state = "",
+                        mappedState = "",
+                        showState = true
+                    )
+                    true
+                }
         }
 
         if (widget.linkedPage != null && ShortcutManagerCompat.isRequestPinShortcutSupported(activity)) {
@@ -430,12 +497,7 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
     }
 
     fun closeAllDialogs() {
-        val itemCount = adapter?.itemCount ?: 0
-        for (pos in 0 until itemCount) {
-            val holder =
-                recyclerView.findViewHolderForAdapterPosition(pos) as WidgetAdapter.ViewHolder?
-            holder?.dialogManager?.close()
-        }
+        // XXX: use child fragment manager
     }
 
     private fun startOrStopVisibleViewHolders(start: Boolean) {
@@ -451,7 +513,13 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
         }
     }
 
-    private fun requestPinAppWidget(context: Context, widget: Widget, state: String, mappedState: String) {
+    private fun requestPinAppWidget(
+        context: Context,
+        widget: Widget,
+        state: String,
+        mappedState: String,
+        showState: Boolean
+    ) {
         val appWidgetManager = AppWidgetManager.getInstance(context)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && appWidgetManager.isRequestPinAppWidgetSupported) {
             val widgetLabel = widget.item?.label.orEmpty()
@@ -461,9 +529,8 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
                 widgetLabel,
                 getString(R.string.item_update_widget_text, widgetLabel, mappedState),
                 mappedState,
-                widget.icon,
-                context.getPrefs().getStringOrFallbackIfEmpty(PrefKeys.LAST_WIDGET_THEME, "dark"),
-                false
+                widget.icon?.withCustomState(""),
+                showState
             )
 
             val callbackIntent = Intent(context, ItemUpdateWidget::class.java).apply {
@@ -517,9 +584,12 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
         val foregroundSize = activity.resources.dpToPixel(46F).toInt()
         val iconBitmap = if (linkedPage.icon != null) {
             try {
+                val iconFallbackColor = activity.getIconFallbackColor(
+                    if (whiteBackground) IconBackground.LIGHT else IconBackground.DARK
+                )
                 connection.httpClient
                     .get(linkedPage.icon.toUrl(activity, true))
-                    .asBitmap(foregroundSize, ImageConversionPolicy.ForceTargetSize)
+                    .asBitmap(foregroundSize, iconFallbackColor, ImageConversionPolicy.ForceTargetSize)
                     .response
             } catch (e: HttpClient.HttpException) {
                 null
@@ -594,6 +664,7 @@ class WidgetListFragment : Fragment(), WidgetAdapter.ItemClickListener,
         private const val CONTEXT_MENU_ID_PIN_HOME_BLACK = 1005
         private const val CONTEXT_MENU_ID_OPEN_IN_MAPS = 1006
         private const val CONTEXT_MENU_ID_COPY_ITEM_NAME = 1007
+        private const val CONTEXT_MENU_ID_SHOW_CHART = 1008
         private const val CONTEXT_MENU_ID_WRITE_CUSTOM_TAG = 10000
         private const val CONTEXT_MENU_ID_WRITE_DEVICE_ID = 10001
 

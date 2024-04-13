@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -24,22 +24,21 @@ import android.widget.CompoundButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatSpinner
-import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.edit
 import androidx.core.os.bundleOf
 import androidx.fragment.app.DialogFragment
 import androidx.preference.DialogPreference
 import androidx.preference.PreferenceDialogFragmentCompat
+import com.google.android.material.materialswitch.MaterialSwitch
 import org.openhab.habdroid.R
 import org.openhab.habdroid.core.CloudMessagingHelper
 import org.openhab.habdroid.ui.preference.CustomDialogPreference
 import org.openhab.habdroid.ui.setupHelpIcon
-import org.openhab.habdroid.ui.updateHelpIconAlpha
 import org.openhab.habdroid.util.PrefKeys
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.getStringOrFallbackIfEmpty
 
-class NotificationPollingPreference constructor(context: Context, attrs: AttributeSet?) :
+class NotificationPollingPreference(context: Context, attrs: AttributeSet?) :
     DialogPreference(context, attrs), CustomDialogPreference {
     private var value: Boolean? = null
 
@@ -78,7 +77,7 @@ class NotificationPollingPreference constructor(context: Context, attrs: Attribu
 
     class PrefDialogFragment : PreferenceDialogFragmentCompat(), CompoundButton.OnCheckedChangeListener {
         private lateinit var helpIcon: ImageView
-        private lateinit var switch: SwitchCompat
+        private lateinit var switch: MaterialSwitch
         private lateinit var spinner: AppCompatSpinner
         private lateinit var spinnerValues: Array<String>
         private lateinit var prefs: SharedPreferences
@@ -135,7 +134,6 @@ class NotificationPollingPreference constructor(context: Context, attrs: Attribu
         }
 
         override fun onCheckedChanged(button: CompoundButton, checked: Boolean) {
-            helpIcon.updateHelpIconAlpha(checked)
             spinner.isEnabled = checked
         }
 

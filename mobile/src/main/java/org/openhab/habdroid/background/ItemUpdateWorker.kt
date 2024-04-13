@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -313,7 +313,7 @@ class ItemUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWo
 
     companion object {
         private val TAG = ItemUpdateWorker::class.java.simpleName
-        private val RETRY_HTTP_ERROR_CODES = listOf(408, 425, 502, 503, 504)
+        private val RETRY_HTTP_ERROR_CODES = listOf(408, 425, 500, 502, 503, 504)
 
         private const val INPUT_DATA_ITEM_NAME = "item"
         private const val INPUT_DATA_LABEL = "label"

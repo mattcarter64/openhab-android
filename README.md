@@ -1,7 +1,6 @@
 <p align="center">
     <a href="https://github.com/openhab/openhab-android/actions?query=workflow%3A%22Build+App%22"><img alt="GitHub Action" src="https://github.com/openhab/openhab-android/workflows/Build%20App/badge.svg"></a>
     <a href="https://crowdin.com/project/openhab-android"><img alt="Crowdin" src="https://d322cqt584bo4o.cloudfront.net/openhab-android/localized.svg"></a>
-    <a href="https://www.bountysource.com/teams/openhab/issues?tracker_ids=968858"><img alt="Bountysource" src="https://www.bountysource.com/badge/tracker?tracker_id=968858"></a>
     <br>
     <img alt="Logo" src="fastlane/metadata/android/en-US/images/icon.png" width="100">
     <br>
@@ -26,11 +25,13 @@ The documentation is available at [www.openhab.org/docs/](https://www.openhab.or
 * [Supports wall mounted tablets](https://www.openhab.org/docs/apps/android.html#permanent-deployment)
 * [Tasker](https://play.google.com/store/apps/details?id=net.dinglisch.android.taskerm) action plugin included
 
-<img src="docs/images/main-menu.png" alt="Demo Overview" width=200px> <img src="docs/images/widget-overview.png" alt="Widget Overview" width=200px> <img src="docs/images/maps.png" alt="Google Maps Widget" width=200px>
+<img src="docs/images/main-menu.png" alt="Demo Overview" width=200px> <img src="docs/images/widget-overview.png" alt="Widget Overview" width=200px> <img src="docs/images/main-ui.png" alt="Main UI" width=200px>
 
 ## Beta builds
 
-Beta builds are distributed via [Google Play](https://play.google.com/store/apps/details?id=org.openhab.habdroid.beta), [GitHub](https://github.com/openhab/openhab-android/releases) and [F-Droid](https://f-droid.org/packages/org.openhab.habdroid.beta). Those builds can be installed alongside the stable version.
+Beta builds are distributed via [GitHub](https://github.com/openhab/openhab-android/releases) and [F-Droid](https://f-droid.org/packages/org.openhab.habdroid.beta). Those builds can be installed alongside the stable version.
+
+On Google Play you can opt-in to get updates of stable versions before others: https://play.google.com/apps/testing/org.openhab.habdroid
 
 ## Localization
 

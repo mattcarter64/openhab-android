@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -21,11 +21,11 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.isVisible
+import androidx.core.widget.NestedScrollView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.BufferedReader
@@ -48,9 +48,9 @@ import org.openhab.habdroid.util.getSecretPrefs
 class LogActivity : AbstractBaseActivity(), SwipeRefreshLayout.OnRefreshListener, SearchView.OnQueryTextListener {
     private lateinit var logTextView: TextView
     private lateinit var fab: FloatingActionButton
-    private lateinit var scrollView: ScrollView
+    private lateinit var scrollView: NestedScrollView
     private lateinit var swipeLayout: SwipeRefreshLayout
-    private lateinit var searchView: SearchView
+    private var searchView: SearchView? = null
     private var showErrorsOnly: Boolean = false
     private var fullLog = ""
 
@@ -59,15 +59,14 @@ class LogActivity : AbstractBaseActivity(), SwipeRefreshLayout.OnRefreshListener
 
         setContentView(R.layout.activity_log)
 
-        setSupportActionBar(findViewById(R.id.openhab_toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
         fab = findViewById(R.id.shareFab)
         logTextView = findViewById(R.id.log)
         scrollView = findViewById(R.id.scrollview)
         swipeLayout = findViewById(R.id.activity_content)
         swipeLayout.setOnRefreshListener(this)
         swipeLayout.applyColors()
+
+        appBarLayout.setLiftOnScrollTargetView(scrollView)
 
         fab.setOnClickListener {
             val sendIntent = Intent().apply {
@@ -87,8 +86,8 @@ class LogActivity : AbstractBaseActivity(), SwipeRefreshLayout.OnRefreshListener
 
         val backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (!searchView.isIconified) {
-                    searchView.isIconified = true
+                if (searchView?.isIconified == false) {
+                    searchView?.isIconified = true
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
@@ -119,9 +118,9 @@ class LogActivity : AbstractBaseActivity(), SwipeRefreshLayout.OnRefreshListener
         menuInflater.inflate(R.menu.log_menu, menu)
 
         val searchItem = menu.findItem(R.id.app_bar_search)
-        searchView = searchItem.actionView as SearchView
-        searchView.inputType = InputType.TYPE_CLASS_TEXT
-        searchView.setOnQueryTextListener(this)
+        searchView = searchItem.actionView as SearchView?
+        searchView?.inputType = InputType.TYPE_CLASS_TEXT
+        searchView?.setOnQueryTextListener(this)
 
         updateErrorsOnlyButtonState(menu.findItem(R.id.show_errors))
         return true
@@ -176,7 +175,7 @@ class LogActivity : AbstractBaseActivity(), SwipeRefreshLayout.OnRefreshListener
 
     private fun fetchLog(clear: Boolean) = launch {
         fullLog = collectLog(clear)
-        onQueryTextChange(searchView.query.toString())
+        onQueryTextChange(searchView?.query?.toString())
         setUiState(false)
         scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
     }

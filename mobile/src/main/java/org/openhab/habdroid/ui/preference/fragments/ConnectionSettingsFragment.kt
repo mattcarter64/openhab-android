@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -25,10 +25,9 @@ import androidx.preference.Preference
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.openhab.habdroid.R
 import org.openhab.habdroid.model.ServerPath
-import org.openhab.habdroid.ui.preference.PreferencesActivity
 import org.openhab.habdroid.util.parcelable
 
-class ConnectionSettingsFragment : PreferencesActivity.AbstractSettingsFragment() {
+class ConnectionSettingsFragment : AbstractSettingsFragment() {
     override val titleResId: Int @StringRes get() = requireArguments().getInt("title")
 
     private lateinit var urlPreference: EditTextPreference

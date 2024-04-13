@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,6 +13,7 @@
 
 package org.openhab.habdroid.util
 
+import android.app.Activity
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -45,7 +46,9 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.preference.PreferenceManager
+import com.caverock.androidsvg.RenderOptions
 import com.caverock.androidsvg.SVG
+import com.google.android.material.color.DynamicColors
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
@@ -163,7 +166,11 @@ enum class ImageConversionPolicy {
 }
 
 @Throws(IOException::class)
-fun ResponseBody.toBitmap(targetSize: Int, conversionPolicy: ImageConversionPolicy): Bitmap {
+fun ResponseBody.toBitmap(
+    targetSize: Int,
+    @ColorInt fallbackColor: Int,
+    conversionPolicy: ImageConversionPolicy
+): Bitmap {
     if (!contentType().isSvg()) {
         val bitmap = BitmapFactory.decodeStream(byteStream())
             ?: throw IOException(
@@ -183,7 +190,7 @@ fun ResponseBody.toBitmap(targetSize: Int, conversionPolicy: ImageConversionPoli
         }
     }
 
-    return byteStream().svgToBitmap(targetSize, conversionPolicy)
+    return byteStream().svgToBitmap(targetSize, fallbackColor, conversionPolicy)
 }
 
 fun MediaType?.isSvg(): Boolean {
@@ -191,7 +198,11 @@ fun MediaType?.isSvg(): Boolean {
 }
 
 @Throws(IOException::class)
-fun InputStream.svgToBitmap(targetSize: Int, conversionPolicy: ImageConversionPolicy): Bitmap {
+fun InputStream.svgToBitmap(
+    targetSize: Int,
+    @ColorInt fallbackColor: Int,
+    conversionPolicy: ImageConversionPolicy
+): Bitmap {
     return try {
         val svg = SVG.getFromInputStream(this)
         val displayMetrics = Resources.getSystem().displayMetrics
@@ -251,7 +262,10 @@ fun InputStream.svgToBitmap(targetSize: Int, conversionPolicy: ImageConversionPo
         if (density != null) {
             canvas.scale(density, density)
         }
-        svg.renderToCanvas(canvas)
+
+        val options = RenderOptions()
+        options.css(" * { color: ${String.format("#%06X", 0xFFFFFF and fallbackColor)}; }")
+        svg.renderToCanvas(canvas, options)
         bitmap
     } catch (e: Exception) {
         throw IOException("SVG decoding failed", e)
@@ -274,6 +288,10 @@ inline fun <T> JSONArray.mapString(transform: (String) -> T): List<T> {
 
 fun JSONObject.optDoubleOrNull(key: String): Double? {
     return if (has(key)) getDouble(key) else null
+}
+
+fun JSONObject.optFloatOrNull(key: String): Float? {
+    return if (has(key)) getDouble(key).toFloat() else null
 }
 
 fun JSONObject.optBooleanOrNull(key: String): Boolean? {
@@ -454,14 +472,54 @@ fun Context.isDarkModeActive(): Boolean {
     }
 }
 
+enum class IconBackground {
+    APP_THEME,
+    OS_THEME,
+    LIGHT,
+    DARK
+}
+@ColorInt
+fun Context.getIconFallbackColor(iconBackground: IconBackground) = when (iconBackground) {
+    IconBackground.APP_THEME -> resolveThemedColor(R.attr.colorOnBackground)
+    IconBackground.OS_THEME -> {
+        val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        val isDark = currentNightMode != Configuration.UI_MODE_NIGHT_NO
+        val colorRes = if (isDark)
+            R.color.on_background_default_theme_dark
+        else
+            R.color.on_background_default_theme_light
+        ContextCompat.getColor(this, colorRes)
+    }
+    IconBackground.LIGHT -> ContextCompat.getColor(this, R.color.on_background_default_theme_light)
+    IconBackground.DARK -> ContextCompat.getColor(this, R.color.on_background_default_theme_dark)
+}
+
+fun Context.loadActiveServerConfig(): ServerConfiguration? {
+    val activeServerId = getPrefs().getActiveServerId()
+    return ServerConfiguration.load(getPrefs(), getSecretPrefs(), activeServerId)
+}
+
+fun Activity.shouldUseDynamicColors(): Boolean {
+    val colorScheme = getPrefs().getStringOrEmpty(PrefKeys.COLOR_SCHEME)
+    return DynamicColors.isDynamicColorAvailable() && colorScheme == getString(R.string.color_scheme_value_dynamic)
+}
+
+fun Activity.applyUserSelectedTheme() {
+    setTheme(getActivityThemeId())
+    if (shouldUseDynamicColors()) {
+        DynamicColors.applyToActivityIfAvailable(this)
+    }
+}
+
 @StyleRes fun Context.getActivityThemeId(): Int {
     val isBlackTheme = getPrefs().getStringOrNull(PrefKeys.THEME) == getString(R.string.theme_value_black)
-    return when (getPrefs().getInt(PrefKeys.ACCENT_COLOR, 0)) {
-        ContextCompat.getColor(this, R.color.indigo_500) ->
-            if (isBlackTheme) R.style.openHAB_Black_basicui else R.style.openHAB_DayNight_basicui
-        ContextCompat.getColor(this, R.color.blue_grey_700) ->
-            if (isBlackTheme) R.style.openHAB_Black_grey else R.style.openHAB_DayNight_grey
-        else -> if (isBlackTheme) R.style.openHAB_Black_orange else R.style.openHAB_DayNight_orange
+    val colorScheme = getPrefs().getStringOrEmpty(PrefKeys.COLOR_SCHEME)
+    val basicUiScheme = getString(R.string.color_scheme_value_basicui)
+    return when {
+        colorScheme == basicUiScheme && isBlackTheme -> R.style.openHAB_DayNight_Black_basicui
+        colorScheme == basicUiScheme -> R.style.openHAB_DayNight_basicui
+        isBlackTheme -> R.style.openHAB_DayNight_Black_orange
+        else -> R.style.openHAB_DayNight_orange
     }
 }
 
@@ -522,7 +580,8 @@ fun ServiceInfo.addToPrefs(context: Context) {
         null,
         null,
         null,
-        false
+        false,
+        null
     )
     config.saveToPrefs(context.getPrefs(), context.getSecretPrefs())
 }
@@ -565,14 +624,20 @@ val PendingIntent_Mutable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 
     0
 }
 
-inline fun <reified T> Intent.parcelable(key: String): T? = when {
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelableExtra(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
+inline fun <reified T> Intent.parcelable(key: String): T? {
+    setExtrasClassLoader(T::class.java.classLoader)
+    return when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelableExtra(key, T::class.java)
+        else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
+    }
 }
 
-inline fun <reified T> Intent.parcelableArrayList(key: String): List<T>? = when {
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelableArrayListExtra(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getParcelableArrayListExtra(key)
+inline fun <reified T> Intent.parcelableArrayList(key: String): List<T>? {
+    setExtrasClassLoader(T::class.java.classLoader)
+    return when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelableArrayListExtra(key, T::class.java)
+        else -> @Suppress("DEPRECATION") getParcelableArrayListExtra(key)
+    }
 }
 
 inline fun <reified T> Bundle.parcelable(key: String): T? = when {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -13,14 +13,11 @@
 
 package org.openhab.habdroid.ui.activity
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.os.Build
+import android.net.Uri
 import android.os.Bundle
-import android.text.InputType
-import android.text.SpannableStringBuilder
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.Menu
@@ -28,23 +25,27 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.PermissionRequest
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.appcompat.app.ActionBar
-import androidx.appcompat.app.AlertDialog
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
+import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
-import androidx.core.view.setPadding
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.snackbar.Snackbar
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
@@ -58,33 +59,49 @@ import org.openhab.habdroid.core.connection.CloudConnection
 import org.openhab.habdroid.core.connection.ConnectionFactory
 import org.openhab.habdroid.core.connection.DemoConnection
 import org.openhab.habdroid.model.ServerConfiguration
+import org.openhab.habdroid.ui.AbstractBaseActivity
 import org.openhab.habdroid.ui.ConnectionWebViewClient
 import org.openhab.habdroid.ui.MainActivity
 import org.openhab.habdroid.ui.setUpForConnection
-import org.openhab.habdroid.util.dpToPixel
 import org.openhab.habdroid.util.getActiveServerId
 import org.openhab.habdroid.util.getConfiguredServerIds
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.getSecretPrefs
+import org.openhab.habdroid.util.hasPermissions
 import org.openhab.habdroid.util.isDarkModeActive
 import org.openhab.habdroid.util.toRelativeUrl
 
-abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateListener, CoroutineScope {
+abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateListener, CoroutineScope, MenuProvider {
     private val job = Job()
     override val coroutineContext: CoroutineContext get() = Dispatchers.Main + job
     private var webView: WebView? = null
     private var callback: ParentCallback? = null
-    private var actionBar: ActionBar? = null
+    private val mainActivity get() = context as MainActivity?
     var isStackRoot = false
         private set
     var title: String? = null
         private set
+    var wantsActionBar = true
+        private set
+
+    private val permissionRequester = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val request = pendingPermissionRequests.remove(results.keys) ?: return@registerForActivityResult
+        val grantedResources = permsToWebResources(results.filter { (_, v) -> v }.keys.toTypedArray())
+        if (grantedResources.isEmpty()) {
+            request.deny()
+        } else {
+            request.grant(grantedResources)
+        }
+    }
+
+    private val pendingPermissionRequests = mutableMapOf<Set<String>, PermissionRequest>()
 
     abstract val titleRes: Int
-    abstract val multiServerTitleRes: Int
     abstract val errorMessageRes: Int
     abstract val urlToLoad: String
-    abstract val urlForError: String
+    abstract val pathForError: String
     open val avoidAuthentication = false
     abstract val lockDrawer: Boolean
     abstract val shortcutIcon: Int
@@ -111,30 +128,64 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         super.onAttach(context)
         val prefs = context.getPrefs()
         val activeServerId = prefs.getActiveServerId()
-        title = if (
-            prefs.getConfiguredServerIds().size <= 1 ||
-            ConnectionFactory.activeUsableConnection?.connection is DemoConnection
+        title = context.getString(titleRes)
+        if (
+            prefs.getConfiguredServerIds().size > 1 &&
+            ConnectionFactory.activeUsableConnection?.connection !is DemoConnection
         ) {
-            context.getString(titleRes)
-        } else {
             val activeServerName = ServerConfiguration.load(prefs, context.getSecretPrefs(), activeServerId)?.name
-            context.getString(multiServerTitleRes, activeServerName)
+            title = getString(R.string.ui_on_server, title, activeServerName)
         }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
         return inflater.inflate(R.layout.fragment_webview, container, false)
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setHasOptionsMenu(true)
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        actionBar = (activity as? MainActivity)?.supportActionBar
-
         webView = view.findViewById(R.id.webview)
+        webView?.webChromeClient = object : WebChromeClient() {
+            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                Log.d(TAG, "progressCallback: progress = $newProgress")
+                if (newProgress == 100) {
+                    updateViewVisibility(null, null)
+                } else {
+                    updateViewVisibility(null, newProgress)
+                }
+            }
+
+            override fun onPermissionRequest(request: PermissionRequest) {
+                val requestedPerms = request.resources
+                    .map { res -> PERMISSION_REQUEST_MAPPING.get(res) }
+                    .filterNotNull()
+                    .flatten()
+                    .toTypedArray()
+
+                if (requestedPerms.isEmpty()) {
+                    Log.w(TAG, "Requested unknown permissions ${request.resources}")
+                    request.deny()
+                } else if (requireContext().hasPermissions(requestedPerms)) {
+                    request.grant(permsToWebResources(requestedPerms))
+                } else {
+                    (activity as AbstractBaseActivity).showSnackbar(
+                        SNACKBAR_TAG_WEBVIEW_PERMISSIONS,
+                        R.string.webview_snackbar_permissions_missing,
+                        Snackbar.LENGTH_INDEFINITE,
+                        R.string.settings_background_tasks_permission_allow,
+                        { request.deny() }
+                    ) {
+                        pendingPermissionRequests[requestedPerms.toSet()] = request
+                        permissionRequester.launch(requestedPerms)
+                    }
+                }
+            }
+
+            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                Log.d(TAG, "${message.message()} -- From line ${message.lineNumber()} of ${message.sourceId()}")
+                return true
+            }
+        }
 
         isStackRoot = requireArguments().getBoolean(KEY_IS_STACK_ROOT)
 
@@ -176,7 +227,7 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         webView?.onResume()
         webView?.resumeTimers()
         if (lockDrawer) {
-            (activity as MainActivity?)?.setDrawerLocked(true)
+            mainActivity?.setDrawerLocked(true)
         }
     }
 
@@ -185,7 +236,7 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         webView?.onPause()
         webView?.pauseTimers()
         if (lockDrawer) {
-            (activity as MainActivity?)?.setDrawerLocked(false)
+            mainActivity?.setDrawerLocked(false)
         }
     }
 
@@ -194,19 +245,19 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         webView?.saveState(outState)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+    override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
         if (ShortcutManagerCompat.isRequestPinShortcutSupported(requireContext())) {
             inflater.inflate(R.menu.webview_menu, menu)
         }
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+    override fun onMenuItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.webview_add_shortcut -> {
                 pinShortcut()
                 true
             }
-            else -> super.onOptionsItemSelected(item)
+            else -> false
         }
     }
 
@@ -215,61 +266,20 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
     }
 
     private fun pinShortcut() {
-        val context = context ?: return
-        askForShortcutTitle(context, shortcutInfo) {
-            val success = ShortcutManagerCompat.requestPinShortcut(context, it, null)
-            if (success) {
-                (activity as? MainActivity)?.showSnackbar(
-                    MainActivity.SNACKBAR_TAG_SHORTCUT_INFO,
-                    R.string.home_shortcut_success_pinning,
-                    Snackbar.LENGTH_SHORT
-                )
-            } else {
-                (activity as? MainActivity)?.showSnackbar(
-                    MainActivity.SNACKBAR_TAG_SHORTCUT_INFO,
-                    R.string.home_shortcut_error_pinning,
-                    Snackbar.LENGTH_LONG
-                )
-            }
+        if (!isAdded) {
+            return
         }
+        val f = ShortcutTitleBottomSheet()
+        f.show(childFragmentManager, "shortcut_title")
     }
 
-    @SuppressLint("RestrictedApi")
-    private fun askForShortcutTitle(
-        context: Context,
-        orig: ShortcutInfoCompat,
-        callback: (newTitle: ShortcutInfoCompat) -> Unit
-    ) {
-        val input = EditText(context).apply {
-            text = SpannableStringBuilder(orig.shortLabel)
-            inputType = InputType.TYPE_CLASS_TEXT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
-            }
-            setPadding(context.resources.dpToPixel(8f).toInt())
-        }
-
-        val customDialog = AlertDialog.Builder(context)
-            .setTitle(getString(R.string.home_shortcut_title))
-            .setView(input)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val label = if (input.text.isNullOrEmpty()) " " else input.text
-
-                callback(
-                    ShortcutInfoCompat.Builder(orig)
-                        .setShortLabel(label)
-                        .build()
-                )
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-        input.setOnFocusChangeListener { _, hasFocus ->
-            val mode = if (hasFocus)
-                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
-            else
-                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN
-            customDialog.window?.setSoftInputMode(mode)
-        }
+    // called from ShortcutTitleBottomSheet
+    private fun createShortcut(info: ShortcutInfoCompat) {
+        val context = context ?: return
+        val success = ShortcutManagerCompat.requestPinShortcut(context, info, null)
+        val textResId = if (success) R.string.home_shortcut_success_pinning else R.string.home_shortcut_error_pinning
+        val duration = if (success) Snackbar.LENGTH_SHORT else Snackbar.LENGTH_LONG
+        mainActivity?.showSnackbar(MainActivity.SNACKBAR_TAG_SHORTCUT_INFO, textResId, duration)
     }
 
     override fun onActiveConnectionChanged() {
@@ -301,7 +311,6 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
             } while (webView?.url == oldUrl && webView?.canGoBack() == true)
             return true
         }
-        actionBar?.show()
         return false
     }
 
@@ -320,14 +329,7 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         val webView = webView ?: return
         val url = modifyUrl(conn.httpClient.buildUrl(urlToLoad))
 
-        webView.setUpForConnection(conn, url, avoidAuthentication) { progress ->
-            Log.d(TAG, "progressCallback: progress = $progress")
-            if (progress == 100) {
-                updateViewVisibility(null, null)
-            } else {
-                updateViewVisibility(null, progress)
-            }
-        }
+        webView.setUpForConnection(conn, url, avoidAuthentication)
         webView.setBackgroundColor(Color.TRANSPARENT)
 
         val jsInterface = if (ShortcutManagerCompat.isRequestPinShortcutSupported(requireContext())) {
@@ -338,18 +340,31 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         webView.addJavascriptInterface(jsInterface, "OHApp")
 
         webView.webViewClient = object : ConnectionWebViewClient(conn) {
-            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                val errorUrl = request.url.toString()
-                Log.e(TAG, "onReceivedError() on URL: $errorUrl")
-                if (errorUrl.endsWith(urlForError)) {
+            private fun handleError(url: Uri) {
+                if (url.path == pathForError) {
                     updateViewVisibility(true, null)
                 }
+            }
+
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                Log.e(TAG, "onReceivedError() on URL: ${request.url}")
+                handleError(request.url)
             }
 
             @Deprecated(message = "Function is called on older Android versions")
             override fun onReceivedError(view: WebView, errorCode: Int, description: String, failingUrl: String) {
                 Log.e(TAG, "onReceivedError() (deprecated) on URL: $failingUrl")
+                // This deprecated version is only called for the main resource, so no need to check for 'pathForError' here
                 updateViewVisibility(true, null)
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView,
+                request: WebResourceRequest,
+                errorResponse: WebResourceResponse
+            ) {
+                Log.e(TAG, "onReceivedHttpError() on URL: ${request.url}")
+                handleError(request.url)
             }
         }
         webView.loadUrl(url.toString())
@@ -376,11 +391,11 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
     }
 
     private fun hideActionBar() {
-        actionBar?.hide()
+        wantsActionBar = false
+        callback?.updateActionBarState()
     }
 
     private fun closeFragment() {
-        actionBar?.show()
         callback?.closeFragment()
     }
 
@@ -435,6 +450,22 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
     companion object {
         private val TAG = AbstractWebViewFragment::class.java.simpleName
 
+        private const val SNACKBAR_TAG_WEBVIEW_PERMISSIONS = "webviewPermissions"
+
+        private val PERMISSION_REQUEST_MAPPING = mapOf(
+            PermissionRequest.RESOURCE_AUDIO_CAPTURE to listOf(
+                android.Manifest.permission.RECORD_AUDIO,
+                android.Manifest.permission.MODIFY_AUDIO_SETTINGS
+            ),
+            PermissionRequest.RESOURCE_VIDEO_CAPTURE to listOf(
+                android.Manifest.permission.CAMERA
+            )
+        )
+        private fun permsToWebResources(androidPermissions: Array<String>) = PERMISSION_REQUEST_MAPPING
+            .filter { (_, perms) -> perms.all { perm -> androidPermissions.contains(perm) } }
+            .keys
+            .toTypedArray()
+
         private const val KEY_CURRENT_URL = "url"
         const val KEY_IS_STACK_ROOT = "is_stack_root"
         const val KEY_SUBPAGE = "subpage"
@@ -442,5 +473,45 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
 
     interface ParentCallback {
         fun closeFragment()
+        fun updateActionBarState()
+    }
+
+    class ShortcutTitleBottomSheet : BottomSheetDialogFragment() {
+        private val parent get() = parentFragment as AbstractWebViewFragment
+        private lateinit var origInfo: ShortcutInfoCompat
+        private lateinit var editor: EditText
+
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            origInfo = parent.shortcutInfo
+        }
+
+        override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+            val view = inflater.inflate(R.layout.bottom_sheet_shortcut_label, container, false)
+            editor = view.findViewById(R.id.editor)
+            return view
+        }
+
+        override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+            super.onViewCreated(view, savedInstanceState)
+            editor.setText(origInfo.shortLabel, TextView.BufferType.EDITABLE)
+            editor.requestFocus()
+
+            view.findViewById<View>(R.id.cancel_button).setOnClickListener {
+                dismissAllowingStateLoss()
+            }
+            view.findViewById<View>(R.id.save).setOnClickListener {
+                save()
+                dismissAllowingStateLoss()
+            }
+        }
+
+        private fun save() {
+            val label = if (editor.text.isNullOrEmpty()) " " else editor.text
+            val newInfo = ShortcutInfoCompat.Builder(origInfo)
+                .setShortLabel(label)
+                .build()
+            parent.createShortcut(newInfo)
+        }
     }
 }

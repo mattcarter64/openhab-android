@@ -8,12 +8,15 @@ on:
 env:
   GRADLE_FILE: "mobile/build.gradle"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Bump version
         run: |
@@ -69,7 +72,7 @@ jobs:
           echo "========================"
 
       - name: Commit changes
-        uses: EndBug/add-and-commit@v9.1.0
+        uses: EndBug/add-and-commit@v9.1.4
         with:
           add: '.'
           author_name: openhab-bot

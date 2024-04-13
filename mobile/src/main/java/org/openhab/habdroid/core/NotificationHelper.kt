@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -30,16 +30,19 @@ import org.openhab.habdroid.R
 import org.openhab.habdroid.background.NotificationUpdateObserver
 import org.openhab.habdroid.core.connection.ConnectionFactory
 import org.openhab.habdroid.model.CloudNotification
+import org.openhab.habdroid.model.IconResource
 import org.openhab.habdroid.ui.MainActivity
 import org.openhab.habdroid.util.HttpClient
+import org.openhab.habdroid.util.IconBackground
 import org.openhab.habdroid.util.ImageConversionPolicy
 import org.openhab.habdroid.util.PendingIntent_Immutable
 import org.openhab.habdroid.util.determineDataUsagePolicy
+import org.openhab.habdroid.util.getIconFallbackColor
 import org.openhab.habdroid.util.getNotificationTone
 import org.openhab.habdroid.util.getNotificationVibrationPattern
 import org.openhab.habdroid.util.getPrefs
 
-class NotificationHelper constructor(private val context: Context) {
+class NotificationHelper(private val context: Context) {
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     suspend fun showNotification(
@@ -59,15 +62,13 @@ class NotificationHelper constructor(private val context: Context) {
         notificationManager.notify(notificationId, n)
 
         if (HAS_GROUPING_SUPPORT) {
-            val count = countCloudNotifNotifications(notificationManager.activeNotifications)
-            notificationManager.notify(
-                SUMMARY_NOTIFICATION_ID,
-                makeSummaryNotification(
-                    count,
-                    message.createdTimestamp,
-                    summaryDeleteIntent
+            val count = countCloudNotifications(notificationManager.activeNotifications)
+            if (count > 1) {
+                notificationManager.notify(
+                    SUMMARY_NOTIFICATION_ID,
+                    makeSummaryNotification(count, message.createdTimestamp, summaryDeleteIntent)
                 )
-            )
+            }
         }
     }
 
@@ -75,7 +76,7 @@ class NotificationHelper constructor(private val context: Context) {
         notificationManager.cancel(notificationId)
         if (HAS_GROUPING_SUPPORT) {
             val active = notificationManager.activeNotifications
-            if (notificationId != SUMMARY_NOTIFICATION_ID && countCloudNotifNotifications(active) == 0) {
+            if (notificationId != SUMMARY_NOTIFICATION_ID && countCloudNotifications(active) == 0) {
                 // Cancel summary when removing the last sub-notification
                 notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
             } else if (notificationId == SUMMARY_NOTIFICATION_ID) {
@@ -112,7 +113,7 @@ class NotificationHelper constructor(private val context: Context) {
     }
 
     @TargetApi(23)
-    private fun countCloudNotifNotifications(active: Array<StatusBarNotification>): Int {
+    private fun countCloudNotifications(active: Array<StatusBarNotification>): Int {
         return active.count { n -> n.id != 0 && (n.groupKey?.endsWith("gcm") == true) }
     }
 
@@ -121,22 +122,7 @@ class NotificationHelper constructor(private val context: Context) {
         notificationId: Int,
         deleteIntent: PendingIntent?
     ): Notification {
-        var iconBitmap: Bitmap? = null
-
-        if (message.icon != null) {
-            val connection = ConnectionFactory.primaryCloudConnection?.connection
-            if (connection != null && context.determineDataUsagePolicy(connection).canDoLargeTransfers) {
-                try {
-                    val targetSize = context.resources.getDimensionPixelSize(R.dimen.notificationlist_icon_size)
-                    iconBitmap = connection.httpClient
-                        .get(message.icon.toUrl(context, true), timeoutMillis = 1000)
-                        .asBitmap(targetSize, ImageConversionPolicy.PreferTargetSize)
-                        .response
-                } catch (e: HttpClient.HttpException) {
-                    Log.d(TAG, "Error getting icon", e)
-                }
-            }
-        }
+        val iconBitmap = getNotificationIcon(message.icon)
 
         val contentIntent = makeNotificationClickIntent(message.id, notificationId)
         val channelId = getChannelId(message.severity)
@@ -161,6 +147,45 @@ class NotificationHelper constructor(private val context: Context) {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(publicVersion)
             .build()
+    }
+
+    private suspend fun getNotificationIcon(icon: IconResource?): Bitmap? {
+        val connection = ConnectionFactory.primaryCloudConnection?.connection
+
+        return when {
+            icon == null -> null
+            connection == null -> {
+                Log.d(TAG, "Got no connection to load icon")
+                null
+            }
+            !context.determineDataUsagePolicy(connection).canDoLargeTransfers -> {
+                Log.d(TAG, "Don't load icon: Data usage policy doesn't allow large transfers")
+                null
+            }
+            else -> {
+                Log.d(TAG, "Load icon from server")
+                try {
+                    val targetSize = context.resources.getDimensionPixelSize(R.dimen.notificationlist_icon_size)
+                    val iconUrlPath = icon.toUrl(context, true)
+                    val bitmap = connection.httpClient
+                        .get(
+                            iconUrlPath,
+                            timeoutMillis = 1000,
+                            caching = HttpClient.CachingMode.FORCE_CACHE_IF_POSSIBLE
+                        )
+                        .asBitmap(
+                            targetSize,
+                            context.getIconFallbackColor(IconBackground.OS_THEME),
+                            ImageConversionPolicy.PreferTargetSize
+                        )
+                        .response
+                    bitmap
+                } catch (e: HttpClient.HttpException) {
+                    Log.e(TAG, "Error getting icon", e)
+                    null
+                }
+            }
+        }
     }
 
     @TargetApi(24)
@@ -215,19 +240,15 @@ class NotificationHelper constructor(private val context: Context) {
     private fun makeNotificationBuilder(
         channelId: String,
         timestamp: Long
-    ): NotificationCompat.Builder {
-        return NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_openhab_appicon_white_24dp)
-            .setContentTitle(context.getString(R.string.app_name))
-            .setWhen(timestamp)
-            .setShowWhen(timestamp != 0L)
-            .setColor(ContextCompat.getColor(context, R.color.openhab_orange))
-            .setCategory(NotificationCompat.CATEGORY_EVENT)
-            .setAutoCancel(true)
-            .setLights(ContextCompat.getColor(context, R.color.openhab_orange), 3000, 3000)
-            .setVibrate(context.getPrefs().getNotificationVibrationPattern(context))
-            .setGroup("gcm")
-    }
+    ) = NotificationCompat.Builder(context, channelId)
+        .setSmallIcon(R.drawable.ic_openhab_appicon_white_24dp)
+        .setWhen(timestamp)
+        .setShowWhen(timestamp != 0L)
+        .setColor(ContextCompat.getColor(context, R.color.openhab_orange))
+        .setAutoCancel(true)
+        .setLights(ContextCompat.getColor(context, R.color.openhab_orange), 3000, 3000)
+        .setVibrate(context.getPrefs().getNotificationVibrationPattern(context))
+        .setGroup("gcm")
 
     companion object {
         private val TAG = NotificationHelper::class.java.simpleName

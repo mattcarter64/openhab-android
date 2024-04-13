@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -423,12 +423,14 @@ class PageConnectionHolderFragment : Fragment(), CoroutineScope {
                         callback.onWidgetUpdated(url, updatedWidget)
                         return
                     }
+                } else if (lastWidgetList != null) {
+                    // Either we didn't find the widget (possibly because the server didn't give us invisible widgets),
+                    // or we couldn't update it because we couldn't trust the data, so reload the page.
+                    // If we didn't have a widget list yet, simply ignore the event - we probably got it while loading the list,
+                    // and if we have no list it's expected to be unable to find the widget.
+                    cancel()
+                    load()
                 }
-
-                // Either we didn't find the widget (possibly because the server didn't give us invisible widgets),
-                // or we couldn't update it because we couldn't trust the data, so reload the page
-                cancel()
-                load()
             } catch (e: JSONException) {
                 Log.w(TAG, "Could not parse SSE event ('$payload')", e)
             }

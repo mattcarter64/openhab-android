@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -46,7 +46,7 @@ interface ConnectionManagerHelper {
 
     fun shutdown()
 
-    sealed class ConnectionType constructor(val network: Network, val caps: NetworkCapabilities) {
+    sealed class ConnectionType(val network: Network, val caps: NetworkCapabilities) {
         class Bluetooth(network: Network, caps: NetworkCapabilities) : ConnectionType(network, caps)
         class Ethernet(network: Network, caps: NetworkCapabilities) : ConnectionType(network, caps)
         class Mobile(network: Network, caps: NetworkCapabilities) : ConnectionType(network, caps)
@@ -68,20 +68,20 @@ interface ConnectionManagerHelper {
         }
     }
 
-    private class HelperApi21 constructor(context: Context) :
+    private class HelperApi21(context: Context) :
         ConnectionManagerHelper, ChangeCallbackHelperApi21(context) {
         private val typeHelper = NetworkTypeHelper(context)
         override val currentConnections: List<ConnectionType> get() = typeHelper.currentConnections
     }
 
     @TargetApi(26)
-    private class HelperApi26 constructor(context: Context) :
+    private class HelperApi26(context: Context) :
         ConnectionManagerHelper, ChangeCallbackHelperApi26(context) {
         private val typeHelper = NetworkTypeHelper(context)
         override val currentConnections: List<ConnectionType> get() = typeHelper.currentConnections
     }
 
-    private open class ChangeCallbackHelperApi21 constructor(context: Context) : BroadcastReceiver() {
+    private open class ChangeCallbackHelperApi21(context: Context) : BroadcastReceiver() {
         var changeCallback: ConnectionChangedCallback? = null
         private val context = context.applicationContext
         private var ignoreNextBroadcast: Boolean
@@ -108,7 +108,7 @@ interface ConnectionManagerHelper {
     }
 
     @TargetApi(26)
-    private open class ChangeCallbackHelperApi26 constructor(context: Context) : ConnectivityManager.NetworkCallback() {
+    private open class ChangeCallbackHelperApi26(context: Context) : ConnectivityManager.NetworkCallback() {
         var changeCallback: ConnectionChangedCallback? = null
         private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)!!
         private val lastKnownCaps = HashMap<Network, NetworkCapabilities>()
@@ -160,7 +160,7 @@ interface ConnectionManagerHelper {
         }
     }
 
-    private class NetworkTypeHelper constructor(context: Context) {
+    private class NetworkTypeHelper(context: Context) {
         private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val currentConnections: List<ConnectionType> get() {
             // TODO: Replace deprecated function
@@ -185,7 +185,6 @@ interface ConnectionManagerHelper {
     }
 }
 
-@TargetApi(26)
 fun NetworkCapabilities.isUsable(): Boolean {
     if (!hasCapability(NET_CAPABILITY_INTERNET) || !hasCapability(NET_CAPABILITY_NOT_RESTRICTED)) {
         return false
@@ -195,10 +194,12 @@ fun NetworkCapabilities.isUsable(): Boolean {
             return false
         }
     }
-    // We don't need validation for e.g. Wifi as we'll use a local connection there,
-    // but we definitely need a working internet connection on mobile
-    if (hasTransport(TRANSPORT_CELLULAR) && !hasCapability(NET_CAPABILITY_VALIDATED)) {
-        return false
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        // We don't need validation for e.g. Wifi as we'll use a local connection there,
+        // but we definitely need a working internet connection on mobile
+        if (hasTransport(TRANSPORT_CELLULAR) && !hasCapability(NET_CAPABILITY_VALIDATED)) {
+            return false
+        }
     }
 
     return true

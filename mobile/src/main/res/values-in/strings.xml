@@ -8,10 +8,10 @@
     <string name="mainmenu_openhab_sitemaps">Peta Situs</string>
     <string name="mainmenu_openhab_preferences">Pengaturan</string>
     <string name="mainmenu_openhab_habpanel">PanelHAB</string>
+    <!-- %1$s: Name of a UI, %2$s: Server name. Example: HABPanel (House). Use the source string as translation if the punctuation rules are the same as in English. -->
     <string name="app_notifications">Pemberitahuan</string>
     <string name="habpanel_error">Terjadi kesalahan saat memuat PanelHAB</string>
     <string name="mainmenu_openhab_selectsitemap">Pilih peta situs default</string>
-    <string name="mainmenu_openhab_clearcache">Hapus cache gambar</string>
     <!-- App settings strings -->
     <string name="settings_connection_title">Pengaturan Koneksi</string>
     <string name="settings_display_title">Pengaturan tampilan</string>
@@ -171,9 +171,6 @@
     <string name="about_community">komunitas openHAB</string>
     <string name="about_translation">Bantu kami menerjemahkan openHAB</string>
     <string name="about_privacy_policy">Kebijakan privasi</string>
-    <string name="set">Atur</string>
-    <string name="cancel">Batalkan</string>
-    <string name="close">Tutup</string>
     <string name="try_again_button">Coba lagi</string>
     <string name="enable_wifi_button">Aktifkan Wi-Fi</string>
     <string name="go_to_settings_button">Pergi ke pengaturan</string>
@@ -219,6 +216,7 @@
     <string name="press_back_to_exit">Tekan kembali sekali lagi untuk keluar</string>
     <!-- Item update widget -->
     <!-- %1$s: Item label, %2$s: Action, e.g. "Lights: On". Use the source string as translation if the punctuation rules are the same as in English. -->
+    <!-- Used in the widget preview -->
     <!-- %1$s: Item label, %2$s: State-->
     <!-- Data saver -->
     <!-- Tiles -->

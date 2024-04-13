@@ -1,40 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:paddingStart="@dimen/widgetlist_item_side_margin"
-    android:paddingEnd="@dimen/widgetlist_item_side_margin">
+    android:layout_height="wrap_content">
 
     <androidx.legacy.widget.Space
-        android:id="@+id/spacer"
+        android:id="@+id/first_view_spacer"
         android:layout_width="match_parent"
-        android:layout_height="8dp"
-        tools:visibility="gone" />
+        android:layout_height="1dp"
+        android:visibility="gone" />
 
-    <View
-        android:id="@+id/divider"
-        android:layout_width="match_parent"
-        android:layout_height="8dip"
-        android:layout_marginStart="@dimen/widgetlist_divider_side_margin"
-        android:layout_marginEnd="@dimen/widgetlist_divider_side_margin"
-        android:background="@drawable/material_divider_themed" />
-
-    <TextView
-        android:id="@+id/widgetlabel"
-        android:textDirection="locale"
+    <FrameLayout
+        android:id="@+id/container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:gravity="center_vertical"
-        android:minHeight="36dp"
-        android:ellipsize="end"
-        android:maxLines="2"
-        android:textColor="@color/colorAccent_themeDark"
-        android:textStyle="bold"
-        tools:ignore="SelectableText" />
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="16dp"
+        android:paddingVertical="4dp"
+        android:paddingHorizontal="16dp"
+        android:background="@drawable/frame_chip_background">
 
-</LinearLayout>
+        <TextView
+            android:id="@+id/widgetlabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="8dp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            tools:text="Frame title" />
+
+    </FrameLayout>
+
+</FrameLayout>

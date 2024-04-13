@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -38,6 +38,7 @@ import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentManager.FragmentLifecycleCallbacks
 import androidx.fragment.app.commit
 import androidx.fragment.app.commitNow
 import java.util.Stack
@@ -65,6 +66,7 @@ import org.openhab.habdroid.util.isDebugModeEnabled
 import org.openhab.habdroid.util.openInBrowser
 import org.openhab.habdroid.util.parcelable
 import org.openhab.habdroid.util.parcelableArrayList
+import org.openhab.habdroid.util.resolveThemedColor
 
 /**
  * Controller class for the content area of [MainActivity]
@@ -73,7 +75,7 @@ import org.openhab.habdroid.util.parcelableArrayList
  * The layout of the content area is up to the respective subclasses.
  */
 abstract class ContentController protected constructor(private val activity: MainActivity) :
-    PageConnectionHolderFragment.ParentCallback, AbstractWebViewFragment.ParentCallback {
+    PageConnectionHolderFragment.ParentCallback, AbstractWebViewFragment.ParentCallback, FragmentLifecycleCallbacks() {
     protected val fm: FragmentManager = activity.supportFragmentManager
 
     private var noConnectionFragment: Fragment? = null
@@ -84,6 +86,7 @@ abstract class ContentController protected constructor(private val activity: Mai
     protected var sitemapFragment: WidgetListFragment? = null
     protected val pageStack = Stack<Pair<LinkedPage, WidgetListFragment>>()
     private val pendingDataLoadUrls = HashSet<String>()
+    private lateinit var contentView: View
 
     override val isDetailedLoggingEnabled get() = activity.getPrefs().isDebugModeEnabled()
     override val serverProperties get() = activity.serverProperties
@@ -103,6 +106,7 @@ abstract class ContentController protected constructor(private val activity: Mai
     }
 
     protected abstract val fragmentForTitle: WidgetListFragment?
+    protected abstract val fragmentForAppBarScroll: WidgetListFragment?
 
     protected val overridingFragment get() = when {
         temporaryPage != null -> temporaryPage
@@ -122,6 +126,8 @@ abstract class ContentController protected constructor(private val activity: Mai
 
         defaultProgressFragment = ProgressFragment.newInstance(null, 0)
         connectionFragment.setCallback(this)
+
+        fm.registerFragmentLifecycleCallbacks(this, true)
     }
 
     /**
@@ -264,7 +270,7 @@ abstract class ContentController protected constructor(private val activity: Mai
     }
 
     fun showWebViewUi(ui: WebViewUi, isStackRoot: Boolean, subpage: String?) {
-        val webViewFragment = ui.fragment.newInstance()
+        val webViewFragment = ui.fragment.getDeclaredConstructor().newInstance()
         webViewFragment.arguments = bundleOf(
             KEY_IS_STACK_ROOT to isStackRoot,
             KEY_SUBPAGE to subpage
@@ -394,7 +400,11 @@ abstract class ContentController protected constructor(private val activity: Mai
      *
      * @param stub View stub to inflate controller views into
      */
-    abstract fun inflateViews(stub: ViewStub)
+    fun inflateViews(stub: ViewStub) {
+        contentView = inflateContentView(stub)
+    }
+
+    protected abstract fun inflateContentView(stub: ViewStub): View
 
     /**
      * Ask the connection controller to deliver content updates for a given page
@@ -438,6 +448,7 @@ abstract class ContentController protected constructor(private val activity: Mai
             }
             temporaryPage = null
             activity.updateTitle()
+            updateActionBarState()
             updateFragmentState(FragmentUpdateReason.PAGE_UPDATE)
             updateConnectionState()
             return true
@@ -445,6 +456,7 @@ abstract class ContentController protected constructor(private val activity: Mai
         if (!pageStack.empty()) {
             pageStack.pop()
             activity.updateTitle()
+            // no need for updating action bar state, as widget list fragments can't hide the action bar
             updateFragmentState(FragmentUpdateReason.BACK_NAVIGATION)
             updateConnectionState()
             return true
@@ -456,6 +468,7 @@ abstract class ContentController protected constructor(private val activity: Mai
         if (temporaryPage != null) {
             temporaryPage = null
             activity.updateTitle()
+            updateActionBarState()
             updateFragmentState(FragmentUpdateReason.PAGE_UPDATE)
             updateConnectionState()
         }
@@ -507,6 +520,15 @@ abstract class ContentController protected constructor(private val activity: Mai
 
     internal abstract fun executeStateUpdate(reason: FragmentUpdateReason)
 
+    override fun updateActionBarState() {
+        val page = temporaryPage
+        activity.appBarShown = if (page is AbstractWebViewFragment) {
+            page.wantsActionBar
+        } else {
+            true
+        }
+    }
+
     private fun updateFragmentState(reason: FragmentUpdateReason) {
         if (fm.isDestroyed) {
             return
@@ -527,6 +549,7 @@ abstract class ContentController protected constructor(private val activity: Mai
         updateFragmentState(FragmentUpdateReason.TEMPORARY_PAGE)
         updateConnectionState()
         activity.updateTitle()
+        updateActionBarState()
     }
 
     private fun updateConnectionState() {
@@ -746,7 +769,7 @@ abstract class ContentController protected constructor(private val activity: Mai
             if (drawableResId != 0) {
                 val drawable = ContextCompat.getDrawable(view.context, drawableResId)
                 drawable?.colorFilter = PorterDuffColorFilter(
-                    ContextCompat.getColor(view.context, R.color.empty_list_text_color),
+                    view.context.resolveThemedColor(R.attr.colorOnSurfaceVariant),
                     PorterDuff.Mode.SRC_IN)
                 watermark.setImageDrawable(drawable)
             } else {
@@ -801,6 +824,18 @@ abstract class ContentController protected constructor(private val activity: Mai
                     KEY_PROGRESS to showProgress
                 )
             }
+        }
+    }
+
+    override fun onFragmentStarted(fm: FragmentManager, f: Fragment) {
+        super.onFragmentStarted(fm, f)
+        if (f == temporaryPage || f == sitemapFragment || pageStack.any { entry -> f == entry.second }) {
+            val scrollingTargetView = when {
+                f is CloudNotificationListFragment -> f.recyclerView
+                f is WidgetListFragment && f == fragmentForAppBarScroll -> f.recyclerView
+                else -> null
+            }
+            activity.appBarLayout.setLiftOnScrollTargetView(scrollingTargetView)
         }
     }
 

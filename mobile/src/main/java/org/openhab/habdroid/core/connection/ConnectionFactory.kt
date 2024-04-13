@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -85,19 +85,19 @@ class ConnectionFactory internal constructor(
     private var activeCloudCheck: Job? = null
     private var primaryCloudCheck: Job? = null
 
-    private data class ServerConnections constructor(
+    private data class ServerConnections(
         val local: Connection?,
         val remote: AbstractConnection?
     )
-    data class ConnectionResult constructor(
+    data class ConnectionResult(
         val connection: Connection?,
         val failureReason: ConnectionException?
     )
-    data class CloudConnectionResult constructor(
+    data class CloudConnectionResult(
         val connection: CloudConnection?,
         val failureReason: Exception?
     )
-    private data class StateHolder constructor(
+    private data class StateHolder(
         val primary: ConnectionResult?,
         val active: ConnectionResult?,
         val primaryCloud: CloudConnectionResult?,
@@ -174,7 +174,7 @@ class ConnectionFactory internal constructor(
         }
     }
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String) {
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
         if (key == PrefKeys.DEBUG_MESSAGES) {
             updateHttpLoggerSettings()
         }

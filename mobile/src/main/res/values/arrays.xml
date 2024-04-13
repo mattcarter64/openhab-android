@@ -14,6 +14,28 @@
         <item>@string/theme_value_black</item>
     </string-array>
 
+    <string-array name="colorSchemeNames">
+        <item>@string/color_scheme_name_default</item>
+        <item>@string/color_scheme_name_basicui</item>
+    </string-array>
+
+    <string-array name="colorSchemeValues">
+        <item>@string/color_scheme_value_default</item>
+        <item>@string/color_scheme_value_basicui</item>
+    </string-array>
+
+    <string-array name="colorSchemeNamesDynamic">
+        <item>@string/color_scheme_name_default</item>
+        <item>@string/color_scheme_name_basicui</item>
+        <item>@string/color_scheme_name_dynamic</item>
+    </string-array>
+
+    <string-array name="colorSchemeValuesDynamic">
+        <item>@string/color_scheme_value_default</item>
+        <item>@string/color_scheme_value_basicui</item>
+        <item>@string/color_scheme_value_dynamic</item>
+    </string-array>
+
     <string-array name="iconTypeNames">
         <item>@string/settings_openhab_icon_format_png</item>
         <item>@string/settings_openhab_icon_format_svg</item>
@@ -144,12 +166,6 @@
         <item>@string/device_control_subtitle_item_name_value</item>
     </string-array>
 
-    <array name="accentColors">
-        <item>@color/openhab_orange</item>
-        <item>@color/indigo_500</item>
-        <item>@color/blue_grey_700</item>
-    </array>
-
     <string-array name="send_device_info_schedule_values">
         <item>15</item>
         <item>60</item>
@@ -176,7 +192,7 @@
     <string-array name="start_page">
         <item>@string/mainmenu_openhab_sitemaps</item>
         <item>@string/mainmenu_openhab_habpanel</item>
-        <item>@string/mainmenu_openhab_oh3_ui</item>
+        <item>@string/mainmenu_openhab_main_ui</item>
         <item>@string/mainmenu_openhab_frontail</item>
     </string-array>
 
@@ -301,15 +317,5 @@
         <item>@string/tile_icon_fan_value</item>
         <item>@string/tile_icon_bell_value</item>
         <item>@string/tile_icon_dashboard_value</item>
-    </string-array>
-
-    <string-array name="widget_theme">
-        <item>@string/theme_name_light</item>
-        <item>@string/theme_name_dark</item>
-    </string-array>
-
-    <string-array name="widget_theme_values">
-        <item>light</item>
-        <item>dark</item>
     </string-array>
 </resources>

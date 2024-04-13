@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -16,6 +16,9 @@ package org.openhab.habdroid.model
 import android.graphics.Color
 import android.location.Location
 import android.os.Parcelable
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.util.IllegalFormatException
 import java.util.Locale
 import java.util.regex.Pattern
@@ -36,7 +39,8 @@ data class ParsedState internal constructor(
     val asNumber: NumberState?,
     val asHsv: HsvState?,
     val asBrightness: Int?,
-    val asLocation: Location?
+    val asLocation: Location?,
+    val asDateTime: LocalDateTime?
 ) : Parcelable {
     override fun equals(other: Any?): Boolean {
         return other is ParsedState && asString == other.asString
@@ -53,16 +57,17 @@ data class ParsedState internal constructor(
                 return true
             }
 
+            val floatValue = state.toFloatOrNull()
+            if (floatValue != null) {
+                return floatValue > 0
+            }
+
             val brightness = parseAsBrightness(state)
             if (brightness != null) {
                 return brightness != 0
             }
-            return try {
-                val decimalValue = Integer.valueOf(state)
-                decimalValue > 0
-            } catch (e: NumberFormatException) {
-                false
-            }
+
+            return false
         }
 
         internal fun parseAsNumber(state: String, format: String?): NumberState? {
@@ -70,19 +75,21 @@ data class ParsedState internal constructor(
                 "ON" -> NumberState(100F)
                 "OFF" -> NumberState(0F)
                 else -> {
+                    val spacePos = state.indexOf(' ')
+                    val number = if (spacePos >= 0) state.substring(0, spacePos) else state
+                    val unit = if (spacePos >= 0) state.substring(spacePos + 1) else null
+                    try {
+                        return NumberState(number.toFloat(), unit, format)
+                    } catch (e: NumberFormatException) {
+                        // fall through
+                    }
+
                     val brightness = parseAsBrightness(state)
                     if (brightness != null) {
-                        NumberState(brightness.toFloat())
-                    } else {
-                        val spacePos = state.indexOf(' ')
-                        val number = if (spacePos >= 0) state.substring(0, spacePos) else state
-                        val unit = if (spacePos >= 0) state.substring(spacePos + 1) else null
-                        return try {
-                            NumberState(number.toFloat(), unit, format)
-                        } catch (e: NumberFormatException) {
-                            null
-                        }
+                        return NumberState(brightness.toFloat())
                     }
+
+                    return null
                 }
             }
         }
@@ -91,9 +98,11 @@ data class ParsedState internal constructor(
             val stateSplit = state.split(",")
             if (stateSplit.size == 3) { // We need exactly 3 numbers to operate this
                 try {
-                    return HsvState(stateSplit[0].toFloat(),
+                    return HsvState(
+                        stateSplit[0].toFloat(),
                         stateSplit[1].toFloat() / 100,
-                        stateSplit[2].toFloat() / 100)
+                        stateSplit[2].toFloat() / 100
+                    )
                 } catch (e: NumberFormatException) {
                     // fall through
                 }
@@ -134,14 +143,31 @@ data class ParsedState internal constructor(
                     // fall through
                 }
             }
-            return null
+            val stateAsFloat = state.toFloatOrNull() ?: return null
+            return when (stateAsFloat) {
+                in 1f .. 100f, 0f -> {
+                    stateAsFloat.toInt()
+                }
+                in 0f .. 1f -> {
+                    1
+                }
+                else -> null
+            }
         }
 
         private val HSB_PATTERN = Pattern.compile("^([0-9]*\\.?[0-9]+),([0-9]*\\.?[0-9]+),([0-9]*\\.?[0-9]+)$")
+
+        internal fun parseAsDateTime(state: String): LocalDateTime? {
+            return try {
+                LocalDateTime.parse(state.split(".")[0], DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            } catch (e: DateTimeParseException) {
+                null
+            }
+        }
     }
 
     @Parcelize
-    class NumberState internal constructor(
+    data class NumberState internal constructor(
         val value: Float,
         val unit: String? = null,
         val format: String? = null
@@ -183,17 +209,19 @@ fun ParsedState.NumberState?.withValue(value: Float): ParsedState.NumberState {
 /**
  * Parses a state string into the parsed representation.
  *
- * @param numberPattern Format to use when parsing the input as number
+ * @param formatPattern Format to use when parsing the input as number or date
  * @return null if state string is null, parsed representation otherwise
  */
-fun String?.toParsedState(numberPattern: String? = null): ParsedState? {
+fun String?.toParsedState(formatPattern: String? = null): ParsedState? {
     if (this == null) {
         return null
     }
     return ParsedState(this,
         ParsedState.parseAsBoolean(this),
-        ParsedState.parseAsNumber(this, numberPattern),
+        ParsedState.parseAsNumber(this, formatPattern),
         ParsedState.parseAsHsv(this),
         ParsedState.parseAsBrightness(this),
-        ParsedState.parseAsLocation(this))
+        ParsedState.parseAsLocation(this),
+        ParsedState.parseAsDateTime(this)
+    )
 }

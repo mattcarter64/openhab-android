@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -14,13 +14,18 @@
 package org.openhab.habdroid.ui.preference.fragments
 
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.VisibleForTesting
 import androidx.core.content.edit
 import androidx.core.os.bundleOf
+import androidx.core.view.MenuProvider
+import androidx.lifecycle.Lifecycle
 import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.work.WorkManager
@@ -43,9 +48,10 @@ import org.openhab.habdroid.util.putPrimaryServerId
 import org.openhab.habdroid.util.updateDefaultSitemap
 
 class ServerEditorFragment :
-    PreferencesActivity.AbstractSettingsFragment(),
+    AbstractSettingsFragment(),
     PreferencesActivity.ConfirmationDialogFragment.Callback,
-    PreferencesActivity.ConfirmLeaveDialogFragment.Callback {
+    PreferencesActivity.ConfirmLeaveDialogFragment.Callback,
+    MenuProvider {
     private lateinit var config: ServerConfiguration
     private lateinit var initialConfig: ServerConfiguration
     private var markAsPrimary = false
@@ -56,7 +62,6 @@ class ServerEditorFragment :
         config = requireArguments().parcelable<ServerConfiguration>("config")!!
         initialConfig = config
         super.onCreate(savedInstanceState)
-        setHasOptionsMenu(true)
 
         val backCallback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -72,14 +77,18 @@ class ServerEditorFragment :
         parentActivity.onBackPressedDispatcher.addCallback(this, backCallback)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        super.onCreateOptionsMenu(menu, inflater)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
+        return super.onCreateView(inflater, container, savedInstanceState)
+    }
+
+    override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.server_editor, menu)
         val deleteItem = menu.findItem(R.id.delete)
         deleteItem.isVisible = prefs.getConfiguredServerIds().contains(config.id)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+    override fun onMenuItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.save -> {
                 saveAndQuit()
@@ -94,7 +103,7 @@ class ServerEditorFragment :
                 )
                 true
             }
-            else -> super.onOptionsItemSelected(item)
+            else -> false
         }
     }
 
@@ -157,7 +166,8 @@ class ServerEditorFragment :
                 config.sslClientCert,
                 config.defaultSitemap,
                 config.wifiSsids,
-                config.restrictToWifiSsids
+                config.restrictToWifiSsids,
+                config.frontailUrl
             )
             parentActivity.invalidateOptionsMenu()
             true
@@ -203,7 +213,8 @@ class ServerEditorFragment :
                 newValue as String?,
                 config.defaultSitemap,
                 config.wifiSsids,
-                config.restrictToWifiSsids
+                config.restrictToWifiSsids,
+                config.frontailUrl
             )
             true
         }
@@ -263,10 +274,35 @@ class ServerEditorFragment :
                     config.sslClientCert,
                     config.defaultSitemap,
                     ssids,
-                    restrictToSsids
+                    restrictToSsids,
+                    config.frontailUrl
                 )
                 true
             }
+        }
+
+        val frontailUrlPref = getPreference("frontail_url") as EditTextPreference
+        val summaryGenerator = { value: String? ->
+            val actualValue = if (!value.isNullOrEmpty()) value else getString(R.string.info_not_set)
+            getString(R.string.frontail_url_summary, actualValue)
+        }
+        frontailUrlPref.summary = summaryGenerator(config.frontailUrl)
+        frontailUrlPref.text = config.frontailUrl
+        frontailUrlPref.setOnPreferenceChangeListener { _, newValue ->
+            val newUrl = newValue as String?
+            frontailUrlPref.summary = summaryGenerator(newUrl)
+            config = ServerConfiguration(
+                config.id,
+                config.name,
+                config.localPath,
+                config.remotePath,
+                config.sslClientCert,
+                config.defaultSitemap,
+                config.wifiSsids,
+                config.restrictToWifiSsids,
+                newUrl
+            )
+            true
         }
 
         val advancedPrefs = getPreference("advanced_prefs")
@@ -274,6 +310,7 @@ class ServerEditorFragment :
             advancedPrefs.isVisible = false
             clientCertPref.isVisible = true
             wifiSsidPref.isVisible = true
+            frontailUrlPref.isVisible = true
             false
         }
     }
@@ -302,7 +339,8 @@ class ServerEditorFragment :
                 config.sslClientCert,
                 config.defaultSitemap,
                 config.wifiSsids,
-                config.restrictToWifiSsids
+                config.restrictToWifiSsids,
+                config.frontailUrl
             )
         } else {
             ServerConfiguration(
@@ -313,7 +351,8 @@ class ServerEditorFragment :
                 config.sslClientCert,
                 config.defaultSitemap,
                 config.wifiSsids,
-                config.restrictToWifiSsids
+                config.restrictToWifiSsids,
+                config.frontailUrl
             )
         }
         parentActivity.invalidateOptionsMenu()

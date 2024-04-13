@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -52,12 +52,10 @@ class ChartWidgetActivity : AbstractBaseActivity(), SwipeRefreshLayout.OnRefresh
         widget = intent.parcelable(EXTRA_WIDGET)!!
         period = widget.period
         // If Widget#legend is null, show legend only for groups
-        showLegend = widget.legend ?: widget.item?.type === Item.Type.Group
+        showLegend = widget.legend ?: (widget.item?.type == Item.Type.Group)
 
         serverFlags = intent.getIntExtra(EXTRA_SERVER_FLAGS, 0)
 
-        setSupportActionBar(findViewById(R.id.openhab_toolbar))
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = widget.label.orDefaultIfEmpty(getString(R.string.chart_activity_title))
 
         chart = findViewById(R.id.chart)

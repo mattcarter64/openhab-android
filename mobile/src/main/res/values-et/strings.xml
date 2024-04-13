@@ -7,9 +7,9 @@
     <!-- Main menu items -->
     <string name="mainmenu_openhab_sitemaps">Sisukaardid</string>
     <string name="mainmenu_openhab_preferences">Seaded</string>
+    <!-- %1$s: Name of a UI, %2$s: Server name. Example: HABPanel (House). Use the source string as translation if the punctuation rules are the same as in English. -->
     <string name="app_notifications">Teavitused</string>
     <string name="habpanel_error">HABPaneli laadimisel ilmnes viga</string>
-    <string name="mainmenu_openhab_clearcache">Tühjendage piltide vahemälu</string>
     <!-- App settings strings -->
     <string name="settings_connection_title">Ühendus</string>
     <string name="settings_display_title">Ekraan</string>
@@ -20,8 +20,6 @@
     <string name="settings_openhab_sslclientcert">SSL kliendisertifikaat</string>
     <string name="settings_openhab_demomode">Demorežiim</string>
     <string name="settings_openhab_theme">Teema</string>
-    <string name="settings_accent_color">Rõhuvärv</string>
-    <string name="settings_select_a_color">Vali värv</string>
     <string name="settings_openhab_fullscreen">Täisekraan</string>
     <string name="settings_openhab_icon_format">Ikooni formaat</string>
     <string name="settings_openhab_icon_format_png">Bitikaart</string>
@@ -92,6 +90,7 @@
     <!-- Themes -->
     <string name="theme_name_light">Hele</string>
     <string name="theme_name_dark">Tume</string>
+    <string name="color_scheme_name_default">Vaikimisi</string>
     <!-- Chart -->
     <string name="chart_activity_title">Skeem</string>
     <string name="chart_activity_period">Ajavahemik</string>
@@ -144,9 +143,6 @@
     <string name="about_community">openHAB kogukond</string>
     <string name="about_privacy_policy">Privaatsuseeskirjad</string>
     <string name="about_rate_this_app">Hinda seda rakendust</string>
-    <string name="set">Määra</string>
-    <string name="cancel">Tühista</string>
-    <string name="close">Sulge</string>
     <string name="try_again_button">Proovi uuesti</string>
     <string name="enable_wifi_button">Lülita Wi-Fi sisse</string>
     <string name="go_to_settings_button">Mine sätetesse</string>
@@ -184,7 +180,7 @@
     <!-- Item update widget -->
     <string name="item_update_widget_content_description_edit">Redigeeri vidinat</string>
     <!-- %1$s: Item label, %2$s: Action, e.g. "Lights: On". Use the source string as translation if the punctuation rules are the same as in English. -->
-    <string name="item_update_widget_item_picker_title">Vali üksus</string>
+    <!-- Used in the widget preview -->
     <!-- %1$s: Item label, %2$s: State-->
     <string name="item_update_success_message_on">%s on sisse lülitatud</string>
     <string name="item_update_success_message_off">%s on välja lülitatud</string>
@@ -198,7 +194,6 @@
     <string name="widget_type_mapview">Kaart</string>
     <string name="widget_type_chart">Skeem</string>
     <!-- Tiles -->
-    <string name="tile_item_picker_title">Vali üksus</string>
     <string name="tile_enable">Lülita sisse</string>
     <!-- Tile icon names -->
     <!-- Tile icon values -->

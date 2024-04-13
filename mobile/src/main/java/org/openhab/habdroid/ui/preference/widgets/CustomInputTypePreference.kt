@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -30,7 +30,7 @@ import com.google.android.material.textfield.TextInputLayout
 import org.openhab.habdroid.R
 import org.openhab.habdroid.ui.preference.CustomDialogPreference
 
-open class CustomInputTypePreference constructor(context: Context, attrs: AttributeSet) :
+open class CustomInputTypePreference(context: Context, attrs: AttributeSet) :
     EditTextPreference(context, attrs), CustomDialogPreference {
     private val inputType: Int
     private val autofillHints: Array<String>?

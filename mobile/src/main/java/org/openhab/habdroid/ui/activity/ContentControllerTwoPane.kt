@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -33,6 +33,8 @@ class ContentControllerTwoPane(activity: MainActivity) : ContentController(activ
 
     override val fragmentForTitle
         get() = if (pageStack.size > 1) pageStack[pageStack.size - 2].second else sitemapFragment
+    override val fragmentForAppBarScroll: WidgetListFragment?
+        get() = if (pageStack.isNotEmpty()) pageStack.peek().second else sitemapFragment
 
     override fun onRestoreInstanceState(state: Bundle) {
         super.onRestoreInstanceState(state)
@@ -100,10 +102,11 @@ class ContentControllerTwoPane(activity: MainActivity) : ContentController(activ
         super.openPage(page, source)
     }
 
-    override fun inflateViews(stub: ViewStub) {
+    override fun inflateContentView(stub: ViewStub): View {
         stub.layoutResource = R.layout.content_twopane
         val view = stub.inflate()
         rightContentView = view.findViewById(R.id.content_right)
         rightContentView.isVisible = false
+        return view
     }
 }

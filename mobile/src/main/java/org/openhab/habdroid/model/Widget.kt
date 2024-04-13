@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,6 +18,7 @@ import android.net.Uri
 import android.os.Parcelable
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.min
 import kotlinx.parcelize.Parcelize
 import org.json.JSONException
 import org.json.JSONObject
@@ -26,6 +27,7 @@ import org.openhab.habdroid.util.forEach
 import org.openhab.habdroid.util.getChartScalingFactor
 import org.openhab.habdroid.util.map
 import org.openhab.habdroid.util.optBooleanOrNull
+import org.openhab.habdroid.util.optFloatOrNull
 import org.openhab.habdroid.util.optStringOrFallback
 import org.openhab.habdroid.util.optStringOrNull
 import org.openhab.habdroid.util.shouldRequestHighResChart
@@ -36,6 +38,7 @@ data class Widget(
     val id: String,
     val parentId: String?,
     private val rawLabel: String,
+    val labelSource: LabelSource,
     val icon: IconResource?,
     val state: ParsedState?,
     val type: Type,
@@ -48,22 +51,57 @@ data class Widget(
     val labelColor: String?,
     val valueColor: String?,
     val refresh: Int,
-    val minValue: Float,
-    val maxValue: Float,
-    val step: Float,
+    private val rawMinValue: Float?,
+    private val rawMaxValue: Float?,
+    private val rawStep: Float?,
     val period: String,
     val service: String,
     val legend: Boolean?,
     val forceAsItem: Boolean,
+    val yAxisDecimalPattern: String?,
     val switchSupport: Boolean,
     val height: Int,
-    val visibility: Boolean
+    val visibility: Boolean,
+    val rawInputHint: InputTypeHint?
 ) : Parcelable {
     val label get() = rawLabel.split("[", "]")[0].trim()
-    val stateFromLabel: String? get() = rawLabel.split("[", "]").getOrNull(1)?.trim()
+    val stateFromLabel: String? get() {
+        val value = rawLabel.split("[", "]").getOrNull(1)?.trim()
+        val optionLabel = mappingsOrItemOptions.find { it.value == value }?.label
+        return optionLabel ?: value
+    }
 
-    val mappingsOrItemOptions get() =
-        if (mappings.isEmpty() && item?.options != null) item.options else mappings
+    val mappingsOrItemOptions get() = if (mappings.isEmpty() && item?.options != null) item.options else mappings
+
+    val minValue get() = min(configuredMinValue, configuredMaxValue)
+    val maxValue get() = max(configuredMinValue, configuredMaxValue)
+    val step get() = abs(configuredStep)
+
+    val inputHint: InputTypeHint get() {
+        if (rawInputHint != null) {
+            return rawInputHint
+        }
+        if (item?.isOfTypeOrGroupType(Item.Type.DateTime) == true) {
+            return InputTypeHint.Datetime
+        }
+        return InputTypeHint.Text
+    }
+
+    private val configuredMinValue get() = when {
+        rawMinValue != null -> rawMinValue
+        item?.minimum != null && item.type != Item.Type.Dimmer -> item.minimum
+        else -> 0f
+    }
+    private val configuredMaxValue get() = when {
+        rawMaxValue != null -> rawMaxValue
+        item?.maximum != null && item.type != Item.Type.Dimmer -> item.maximum
+        else -> 100f
+    }
+    private val configuredStep get() = when {
+        rawStep != null -> rawStep
+        item?.step != null && item.type != Item.Type.Dimmer -> item.step
+        else -> 1f
+    }
 
     @Suppress("unused")
     enum class Type {
@@ -81,7 +119,24 @@ data class Widget(
         Text,
         Video,
         Webview,
+        Input,
+        Buttongrid,
         Unknown
+    }
+
+    enum class InputTypeHint {
+        Text,
+        Number,
+        Date,
+        Time,
+        Datetime
+    }
+
+    enum class LabelSource {
+        Unknown,
+        ItemLabel,
+        ItemName,
+        SitemapDefinition
     }
 
     fun toChartUrl(
@@ -107,12 +162,10 @@ data class Widget(
         if (service.isNotEmpty()) {
             chartUrl.appendQueryParameter("service", service)
         }
-        if (chartTheme != null) {
-            chartUrl.appendQueryParameter("theme", chartTheme.toString())
-        }
-        if (forcedLegend != null) {
-            chartUrl.appendQueryParameter("legend", forcedLegend)
-        }
+        chartTheme?.let { chartUrl.appendQueryParameter("theme", it.toString()) }
+        forcedLegend?.let { chartUrl.appendQueryParameter("legend", it) }
+        yAxisDecimalPattern?.let { chartUrl.appendQueryParameter("yAxisDecimalPattern", it) }
+
         if (width > 0) {
             chartUrl.appendQueryParameter("w", width / resDivider)
             chartUrl.appendQueryParameter("h", height / resDivider)
@@ -125,44 +178,52 @@ data class Widget(
         @Throws(JSONException::class)
         fun updateFromEvent(source: Widget, eventPayload: JSONObject): Widget {
             val item = Item.updateFromEvent(source.item, eventPayload.optJSONObject("item"))
+            val state = determineWidgetState(eventPayload.optStringOrNull("state"), item)
             val iconName = eventPayload.optStringOrFallback("icon", source.icon?.icon)
-            val icon = iconName.toOH2WidgetIconResource(item, source.type, source.mappings.isNotEmpty())
+            val staticIcon = source.icon?.customState?.isEmpty() == true
+            val hasMappings = source.mappings.isNotEmpty()
+            val icon = iconName.toOH2WidgetIconResource(item, source.type, hasMappings, !staticIcon)
             return Widget(
                 id = source.id,
                 parentId = source.parentId,
                 rawLabel = eventPayload.optString("label", source.label),
+                labelSource = eventPayload.optStringOrNull("labelSource").toLabelSource(),
                 icon = icon,
-                state = determineWidgetState(eventPayload.optStringOrNull("state"), item),
+                state = state,
                 type = source.type,
                 url = source.url,
                 item = item,
                 linkedPage = source.linkedPage,
                 mappings = source.mappings,
                 encoding = source.encoding,
-                iconColor = source.iconColor,
+                iconColor = eventPayload.optStringOrNull("iconcolor"),
                 labelColor = eventPayload.optStringOrNull("labelcolor"),
                 valueColor = eventPayload.optStringOrNull("valuecolor"),
                 refresh = source.refresh,
-                minValue = source.minValue,
-                maxValue = source.maxValue,
-                step = source.step,
+                rawMinValue = source.rawMinValue,
+                rawMaxValue = source.rawMaxValue,
+                rawStep = source.rawStep,
                 period = source.period,
                 service = source.service,
                 legend = source.legend,
                 forceAsItem = source.forceAsItem,
                 switchSupport = source.switchSupport,
+                yAxisDecimalPattern = source.yAxisDecimalPattern,
                 height = source.height,
-                visibility = eventPayload.optBoolean("visibility", source.visibility)
+                visibility = eventPayload.optBoolean("visibility", source.visibility),
+                rawInputHint = source.rawInputHint
             )
         }
 
         internal fun sanitizeRefreshRate(refresh: Int) = if (refresh in 1..99) 100 else refresh
         internal fun sanitizePeriod(period: String?) = if (period.isNullOrEmpty()) "D" else period
-        internal fun sanitizeMinMaxStep(min: Float, max: Float, step: Float) =
-            Triple(min, max(min, max), abs(step))
 
-        internal fun determineWidgetState(state: String?, item: Item?): ParsedState? {
-            return state.toParsedState(item?.state?.asNumber?.format) ?: item?.state
+        internal fun determineWidgetState(state: String?, item: Item?): ParsedState? = when {
+            state == null -> item?.state
+            item?.isOfTypeOrGroupType(Item.Type.Number) == true ||
+                item?.isOfTypeOrGroupType(Item.Type.NumberWithDimension) == true ->
+                state.toParsedState(item.state?.asNumber?.format)
+            else -> state.toParsedState()
         }
     }
 }
@@ -176,6 +237,21 @@ fun String?.toWidgetType(): Widget.Type {
         }
     }
     return Widget.Type.Unknown
+}
+
+fun String?.toInputHint(): Widget.InputTypeHint? = this?.let { value ->
+    try {
+        return Widget.InputTypeHint.valueOf(value.lowercase().replaceFirstChar { c -> c.uppercase() })
+    } catch (e: IllegalArgumentException) {
+        return null
+    }
+}
+
+fun String?.toLabelSource(): Widget.LabelSource = when (this) {
+    "SITEMAP_WIDGET" -> Widget.LabelSource.SitemapDefinition
+    "ITEM_LABEL" -> Widget.LabelSource.ItemLabel
+    "ITEM_NAME" -> Widget.LabelSource.ItemName
+    else -> Widget.LabelSource.Unknown
 }
 
 fun Node.collectWidgets(parent: Widget?): List<Widget> {
@@ -232,19 +308,19 @@ fun Node.collectWidgets(parent: Widget?): List<Widget> {
                         "label" -> mappingLabel = childNode.textContent
                     }
                 }
-                mappings.add(LabeledValue(mappingCommand, mappingLabel))
+                mappings.add(LabeledValue(mappingCommand, mappingLabel, null, 0, 0))
             }
             else -> {}
         }
     }
 
     val finalId = id ?: return emptyList()
-    val (actualMin, actualMax, actualStep) = Widget.sanitizeMinMaxStep(minValue, maxValue, step)
 
     val widget = Widget(
         id = finalId,
         parentId = parent?.id,
         rawLabel = label.orEmpty(),
+        labelSource = Widget.LabelSource.Unknown,
         icon = icon.toOH1IconResource(),
         state = item?.state,
         type = type,
@@ -257,15 +333,17 @@ fun Node.collectWidgets(parent: Widget?): List<Widget> {
         labelColor = labelColor,
         valueColor = valueColor,
         refresh = Widget.sanitizeRefreshRate(refresh),
-        minValue = actualMin,
-        maxValue = actualMax,
-        step = actualStep,
+        rawMinValue = minValue,
+        rawMaxValue = maxValue,
+        rawStep = step,
         period = Widget.sanitizePeriod(period),
         service = service,
         legend = null,
         forceAsItem = false, // forceAsItem was added in openHAB 3, so no support for openHAB 1 required.
+        yAxisDecimalPattern = null,
         switchSupport = switchSupport,
         height = height,
+        rawInputHint = null, // inputHint was added in openHAB 4, so no support for openHAB 1 required.
         visibility = true
     )
     val childWidgets = childWidgetNodes.map { node -> node.collectWidgets(widget) }.flatten()
@@ -284,17 +362,14 @@ fun JSONObject.collectWidgets(parent: Widget?): List<Widget> {
     val item = optJSONObject("item")?.toItem()
     val type = getString("type").toWidgetType()
     val icon = optStringOrNull("icon")
-    val (minValue, maxValue, step) = Widget.sanitizeMinMaxStep(
-        optDouble("minValue", 0.0).toFloat(),
-        optDouble("maxValue", 100.0).toFloat(),
-        optDouble("step", 1.0).toFloat()
-    )
+    val staticIcon = optBoolean("staticIcon", false)
 
     val widget = Widget(
         id = getString("widgetId"),
         parentId = parent?.id,
         rawLabel = optString("label", ""),
-        icon = icon.toOH2WidgetIconResource(item, type, mappings.isNotEmpty()),
+        labelSource = optStringOrNull("labelSource").toLabelSource(),
+        icon = icon.toOH2WidgetIconResource(item, type, mappings.isNotEmpty(), !staticIcon),
         state = Widget.determineWidgetState(optStringOrNull("state"), item),
         type = type,
         url = optStringOrNull("url"),
@@ -306,13 +381,17 @@ fun JSONObject.collectWidgets(parent: Widget?): List<Widget> {
         labelColor = optStringOrNull("labelcolor"),
         valueColor = optStringOrNull("valuecolor"),
         refresh = Widget.sanitizeRefreshRate(optInt("refresh")),
-        minValue = minValue, maxValue = maxValue, step = step,
+        rawMinValue = optFloatOrNull("minValue"),
+        rawMaxValue = optFloatOrNull("maxValue"),
+        rawStep = optFloatOrNull("step"),
         period = Widget.sanitizePeriod(optString("period")),
         service = optString("service", ""),
         legend = optBooleanOrNull("legend"),
         forceAsItem = optBoolean("forceAsItem", false),
+        yAxisDecimalPattern = optString("yAxisDecimalPattern"),
         switchSupport = optBoolean("switchSupport", false),
         height = optInt("height"),
+        rawInputHint = optStringOrNull("inputHint").toInputHint(),
         visibility = optBoolean("visibility", true)
     )
 

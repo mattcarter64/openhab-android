@@ -14,19 +14,14 @@
     <string name="mainmenu_openhab_sitemaps">Sitemaps</string>
     <string name="mainmenu_openhab_preferences">Impostazioni</string>
     <string name="mainmenu_openhab_habpanel">HABPanel</string>
-    <string name="mainmenu_openhab_habpanel_on_server">HABPanel (%s)</string>
-    <string name="mainmenu_openhab_oh3_ui">openHAB 3 UI</string>
-    <string name="mainmenu_openhab_oh3_ui_on_server">openHAB 3 UI (%s)</string>
     <string name="mainmenu_openhab_frontail">Frontail</string>
-    <string name="mainmenu_openhab_frontail_on_server">Frontail (%s)</string>
+    <!-- %1$s: Name of a UI, %2$s: Server name. Example: HABPanel (House). Use the source string as translation if the punctuation rules are the same as in English. -->
+    <string name="ui_on_server">%1$s (%2$s)</string>
     <string name="app_notifications">Notifiche</string>
-    <string name="app_notifications_on_server">Notifiche (%s)</string>
     <string name="habpanel_error">Si è verificato un errore caricando HABPanel</string>
-    <string name="oh3_ui_error">Si è verificato un errore durante il caricamento di openHAB 3 UI</string>
     <string name="frontail_error">Si è verificato un errore durante il caricamento di Frontail. Nota che non è disponibile tramite openHAB Cloud.</string>
-    <string name="frontail_pref_summary">Frontail deve funzionare sulla sua porta predefinita 9001. È in bundle con openHABian o può essere installato manualmente.</string>
     <string name="mainmenu_openhab_selectsitemap">Seleziona Sitemap predefinito</string>
-    <string name="mainmenu_openhab_clearcache">Pulisci cache immagini</string>
+    <string name="settings_clear_caches">Svuota cache</string>
     <!-- App settings strings -->
     <string name="settings_connection_title">Connessione</string>
     <string name="settings_display_title">Schermo</string>
@@ -44,6 +39,8 @@
     <string name="settings_openhab_sslclientcert">Certificato SSL client</string>
     <string name="settings_openhab_sslclientcert_howto_summary">Tocca qui per suggerimenti e spiegazioni su come configurare l\'autenticazione con certificato SSL client</string>
     <string name="settings_openhab_sslclientcert_not_supported">I certificati del client SSL non sono supportati dal tuo dispositivo</string>
+    <string name="frontail_url_title">Frontail URL</string>
+    <string name="frontail_url_summary">L\'URL di Frontail. È incluso in openHABian o può essere installato manualmente. Lasciare vuoto per usare le impostazioni predefinite. Impostazione corrente: %s</string>
     <string name="settings_openhab_screentimeroff">Disabilita Tempo Spegnimento Schermo</string>
     <string name="settings_openhab_screentimeroff_summary">Lo schermo non si spegne quando openHAB è in esecuzione</string>
     <string name="settings_openhab_demomode">Modalità demo</string>
@@ -51,10 +48,14 @@
     <string name="start_page_title">Pagina iniziale</string>
     <string name="drawer_entries">Voci del menu laterale</string>
     <string name="settings_openhab_theme">Tema</string>
-    <string name="settings_accent_color">Colore tinta</string>
-    <string name="settings_select_a_color">Seleziona un colore</string>
     <string name="settings_openhab_fullscreen">Schermo intero</string>
-    <string name="settings_set_as_launcher">Consenti all\'app di essere utilizzata come launcher</string>
+    <string name="settings_set_as_launcher_title">Impostato per Avvio</string>
+    <string name="settings_set_as_launcher_summary">Consenti all\'app di essere utilizzata come prima esecuzione. Dopo l\'abilitazione, l\'applicazione deve ancora essere selezionata come applicazione di avvio predefinito per avere effetto.</string>
+    <string name="settings_sitemap_compact_mode_title">Modalità compatta</string>
+    <string name="settings_sitemap_compact_mode_off">Usa un layout a due righe per i widget Sitemap, che rende i controlli più grandi e quindi più facili da usare, ma richiede più scorrimento per liste più lunghe</string>
+    <string name="settings_sitemap_compact_mode_on">Usa un layout a una linea per i widget Sitemap, che mette il maggior numero possibile di widget sullo schermo, ma riduce la dimensione dei controlli</string>
+    <string name="settings_color_scheme_title">Schema colori</string>
+    <string name="settings_show_icons">Mostra icone</string>
     <string name="settings_openhab_icon_format">Formato icona</string>
     <string name="settings_openhab_icon_format_png">Bitmap</string>
     <string name="settings_openhab_icon_format_svg">Vettoriale</string>
@@ -73,6 +74,9 @@
     <string name="settings_no_default_sitemap">Nessun Sitemap predefinito selezionato</string>
     <!-- %1$s: Default Sitemap label -->
     <string name="settings_current_default_sitemap">Sitemap predefinito attuale: %1$s</string>
+    <string name="settings_ui_command_item">Item comando UI</string>
+    <string name="settings_ui_command_item_summary_on">La sitemap può essere controllata tramite l\'item \"%s\"</string>
+    <string name="settings_ui_command_item_summary_off">La sitemap non può essere controllata da un Item</string>
     <string name="settings_openhab_alt_connection">Remoto</string>
     <string name="settings_openhab_connection">Locale</string>
     <string name="settings_ringtone">Suoneria</string>
@@ -84,6 +88,9 @@
     <string name="settings_notification_vibration_long">Lungo</string>
     <string name="settings_notification_vibration_twice">Due volte</string>
     <string name="settings_notification_ringtone_vibration">Suoneria &amp; Vibrazione</string>
+    <string name="settings_notification_reset_settings">Reimposta categorie</string>
+    <string name="settings_notification_reset_settings_confirm">Vuoi rimuovere tutte le categorie di notifiche? Verranno ricreate quando arriverà una nuova notifica per questa categoria.</string>
+    <string name="settings_notification_hint">La gravità delle notifiche tramite myopenHAB.org è impostata come categoria di notifica. È possibile configurare diverse impostazioni di notifica per ogni categoria.</string>
     <string name="settings_connection_summary">Connesso a %s</string>
     <!-- %1$s: URL, %2$s: Reason why connection is insecure -->
     <string name="settings_insecure_connection_summary">Connessione non sicura a %1$s: %2$s</string>
@@ -124,7 +131,9 @@
     <string name="device_control_subtitle_equipment">Dispositivo</string>
     <string name="device_control_subtitle_location_equipment">Posizione e Dispositivi</string>
     <string name="device_control_subtitle_item_name">Nome Item</string>
-    <string name="device_control_subtitle">Sottotitolo Controllo Dispositivo</string>
+    <string name="device_control">Controllo dispositivo Android</string>
+    <string name="device_control_subtitle">Descrizione dell\'icona</string>
+    <string name="device_control_hint">A seconda della versione di Android queste icone si trovano nel menu ottenuto premendo a lungo sul pulsante di accensione o accanto alle icone ad accesso rapido</string>
     <!-- App messages strings -->
     <string name="title_voice_widget">Comandi vocali</string>
     <string name="voice_command">Comando vocale</string>
@@ -169,8 +178,9 @@
     <string name="error_certificate_wrong_host">Il certificato SSL non e\' valido per %s</string>
     <string name="error_http_to_https_port">Fine imprevista dello stream. Stai cercando di connetterti ad una porta HTTPS tramite HTTP?</string>
     <string name="webview_ssl">Attualmente questa app non supporta certificati SSL autofirmati per i widget Webview</string>
+    <string name="webview_snackbar_permissions_missing">La pagina richiede permessi aggiuntivi per funzionare correttamente</string>
     <!-- The following strings are referenced via reflection in Context.getHumanReadableErrorMessage -->
-    <string name="error_http_code_401" tools:keep="@string/error_http_code_401">Autenticazione non riuscita. Controlla l\'utente e password configurati nel certificato SSL (codice HTTP %d).</string>
+    <string name="error_http_code_404" tools:keep="@string/error_http_code_404">Non trovato (Codice HTTP %d)</string>
     <string name="error_http_code_414" tools:keep="@string/error_http_code_414">L\'URL è troppo lungo. Utilizzare l\'indirizzo IP o un URL più corto (codice HTTP %d).</string>
     <string name="error_http_code_426" tools:keep="@string/error_http_code_426">Richiesto HTTPS. Si prega di cambiare l\'URL (codice HTTP %d).</string>
     <!-- Nginx specific codes, but since it is the recommended reverse proxy, we should check for them: https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#nginx -->
@@ -357,6 +367,9 @@
     <string name="theme_name_system">Come da Sistema</string>
     <string name="theme_name_battery_saver">Modalità scura in risparmio batteria</string>
     <string name="theme_name_black">Nero</string>
+    <string name="color_scheme_name_default">Predefinito</string>
+    <string name="color_scheme_name_basicui">Basic UI</string>
+    <string name="color_scheme_name_dynamic">Dinamico</string>
     <!-- Chart -->
     <string name="chart_activity_title">Grafico</string>
     <string name="chart_activity_hide_legend">Nascondi legenda</string>
@@ -419,9 +432,6 @@
     <string name="about_rate_this_app">Valuta questa app</string>
     <string name="settings_debug_messages_title">Mostra informazioni per la risoluzione dei problemi</string>
     <string name="settings_troubleshooting_title">Risoluzione Dei Problemi</string>
-    <string name="set">Imposta</string>
-    <string name="cancel">Annulla</string>
-    <string name="close">Chiudi</string>
     <string name="undo">Annulla</string>
     <string name="try_again_button">Riprova</string>
     <string name="enable_wifi_button">Accendi Wi-Fi</string>
@@ -453,6 +463,10 @@
     <string name="content_description_open_roller_shutter">Apertura tapparella</string>
     <string name="content_description_stop_roller_shutter">Ferma tapparella</string>
     <string name="content_description_close_roller_shutter">Chiusura tapparella</string>
+    <string name="content_description_player_previous">Salta alla traccia precedente</string>
+    <string name="content_description_player_next">Passa alla traccia successiva</string>
+    <string name="content_description_player_pause">Riproduzione in pausa</string>
+    <string name="content_description_player_play">Avvia riproduzione</string>
     <string name="content_description_open_color_wheel">Apri ruota dei colori</string>
     <string name="content_description_color_up">On o ferma l\'aumento luminosita\'</string>
     <string name="content_description_color_down">Off o ferma l\'aumento luminosita\'</string>
@@ -500,13 +514,13 @@
     <string name="press_back_to_exit">Premi ancora indietro per uscire</string>
     <!-- Item update widget -->
     <string name="item_update_widget_title">Controllo Item</string>
-    <string name="item_update_widget_content_description">Widget per cambiare lo stato Item</string>
+    <string name="item_update_widget_content_description">Cambia o leggi lo stato di un elemento</string>
     <string name="item_update_widget_content_description_edit">Modifica widget</string>
     <string name="item_update_widget">Widget</string>
     <!-- %1$s: Item label, %2$s: Action, e.g. "Lights: On". Use the source string as translation if the punctuation rules are the same as in English. -->
     <string name="item_update_widget_text">%1$s: %2$s</string>
-    <string name="item_update_widget_item_picker_title">Seleziona un Item</string>
-    <string name="widget_show_state">Aggiungi lo stato corrente al nome</string>
+    <!-- Used in the widget preview -->
+    <string name="item_update_widget_preview_text">Garage aperto</string>
     <string name="widget_show_state_summary">Lo stato viene aggiornato periodicamente che può essere impostata nelle impostazioni in \"Invia informazioni sul dispositivo al server\"</string>
     <string name="widget_no_command">Non inviare un comando</string>
     <string name="error_getting_state">Errore nel caricare lo stato</string>
@@ -549,6 +563,7 @@
     <string name="item_update_error_no_connection">Nessuna connessione</string>
     <string name="item_update_error_couldnt_get_item_type">Non posso recuperare il tipo dell’Item</string>
     <string name="create_home_screen_widget_title">Crea widget</string>
+    <string name="create_home_screen_widget_no_command">Mostra lo stato corrente</string>
     <string name="create_home_screen_widget_not_supported">Vai al menu widget nella schermata iniziale e crea un widget da lì</string>
     <!-- Data saver -->
     <string name="data_saver_title">Risparmio dati</string>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -43,20 +43,20 @@ import org.openhab.habdroid.background.BackgroundTasksManager
 import org.openhab.habdroid.core.connection.ConnectionFactory
 import org.openhab.habdroid.model.IconFormat
 import org.openhab.habdroid.model.IconResource
+import org.openhab.habdroid.model.Item
 import org.openhab.habdroid.model.getIconResource
 import org.openhab.habdroid.model.putIconResource
 import org.openhab.habdroid.ui.duplicate
 import org.openhab.habdroid.ui.preference.PreferencesActivity
 import org.openhab.habdroid.util.CacheManager
 import org.openhab.habdroid.util.HttpClient
+import org.openhab.habdroid.util.IconBackground
 import org.openhab.habdroid.util.ImageConversionPolicy
 import org.openhab.habdroid.util.ItemClient
 import org.openhab.habdroid.util.PendingIntent_Immutable
-import org.openhab.habdroid.util.PrefKeys
 import org.openhab.habdroid.util.dpToPixel
-import org.openhab.habdroid.util.getPrefs
+import org.openhab.habdroid.util.getIconFallbackColor
 import org.openhab.habdroid.util.getStringOrEmpty
-import org.openhab.habdroid.util.getStringOrFallbackIfEmpty
 import org.openhab.habdroid.util.getStringOrNull
 import org.openhab.habdroid.util.isSvg
 import org.openhab.habdroid.util.parcelable
@@ -171,7 +171,11 @@ open class ItemUpdateWidget : AppWidgetProvider() {
                 ConnectionFactory.waitForInitialization()
                 try {
                     ConnectionFactory.primaryUsableConnection?.connection?.let { connection ->
-                        ItemClient.loadItem(connection, data.item)?.state?.asString
+                        val item = ItemClient.loadItem(connection, data.item)
+                        when {
+                            item?.isOfTypeOrGroupType(Item.Type.Number) == true -> item.state?.asNumber?.toString()
+                            else -> item?.state?.asString
+                        }
                     }
                 } catch (e: HttpClient.HttpException) {
                     Log.e(TAG, "Failed to load state of item ${data.item}")
@@ -218,7 +222,13 @@ open class ItemUpdateWidget : AppWidgetProvider() {
                 val sizeInDp = min(height, width)
                 @Px val size = context.resources.dpToPixel(sizeInDp).toInt()
                 Log.d(TAG, "Icon size: $size")
-                iconData.svgToBitmap(size, ImageConversionPolicy.PreferTargetSize)
+                val widgetBackground = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    IconBackground.OS_THEME
+                } else {
+                    IconBackground.LIGHT
+                }
+                val fallbackColor = context.getIconFallbackColor(widgetBackground)
+                iconData.svgToBitmap(size, fallbackColor, ImageConversionPolicy.PreferTargetSize)
             }
 
             val setIcon = { iconData: InputStream, isSvg: Boolean ->
@@ -297,13 +307,8 @@ open class ItemUpdateWidget : AppWidgetProvider() {
             val widgetLabel = prefs.getStringOrNull(PreferencesActivity.ITEM_UPDATE_WIDGET_WIDGET_LABEL)
             val mappedState = prefs.getStringOrEmpty(PreferencesActivity.ITEM_UPDATE_WIDGET_MAPPED_STATE)
             val icon = prefs.getIconResource(PreferencesActivity.ITEM_UPDATE_WIDGET_ICON)
-            // Fallback to the theme of the previously set widget
-            val theme = prefs.getStringOrFallbackIfEmpty(
-                PreferencesActivity.ITEM_UPDATE_WIDGET_THEME,
-                context.getPrefs().getStringOrFallbackIfEmpty(PrefKeys.LAST_WIDGET_THEME, "dark")
-            )
             val showState = prefs.getBoolean(PreferencesActivity.ITEM_UPDATE_WIDGET_SHOW_STATE, false)
-            return ItemUpdateWidgetData(item, command, label, widgetLabel, mappedState, icon, theme, showState)
+            return ItemUpdateWidgetData(item, command, label, widgetLabel, mappedState, icon, showState)
         }
 
         fun saveInfoForWidget(
@@ -318,7 +323,6 @@ open class ItemUpdateWidget : AppWidgetProvider() {
                 putString(PreferencesActivity.ITEM_UPDATE_WIDGET_WIDGET_LABEL, data.widgetLabel)
                 putString(PreferencesActivity.ITEM_UPDATE_WIDGET_MAPPED_STATE, data.mappedState)
                 putIconResource(PreferencesActivity.ITEM_UPDATE_WIDGET_ICON, data.icon)
-                putString(PreferencesActivity.ITEM_UPDATE_WIDGET_THEME, data.theme)
                 putBoolean(PreferencesActivity.ITEM_UPDATE_WIDGET_SHOW_STATE, data.showState)
             }
         }
@@ -331,19 +335,10 @@ open class ItemUpdateWidget : AppWidgetProvider() {
             data: ItemUpdateWidgetData,
             itemState: String
         ): RemoteViews {
-            val darkTheme = data.theme == "dark"
-            val layout = when {
-                data.widgetLabel?.isEmpty() == true -> {
-                    if (darkTheme) R.layout.widget_item_update_dark_no_text
-                    else R.layout.widget_item_update_light_no_text
-                }
-                smallWidget -> {
-                    if (darkTheme) R.layout.widget_item_update_dark_text_small
-                    else R.layout.widget_item_update_light_text_small
-                }
-                else -> {
-                    if (darkTheme) R.layout.widget_item_update_dark_text else R.layout.widget_item_update_light_text
-                }
+            val layout = if (smallWidget) {
+                R.layout.widget_item_update_small
+            } else {
+                R.layout.widget_item_update
             }
             val label = if (data.showState) {
                 "${data.widgetLabel.orEmpty()} $itemState"
@@ -351,9 +346,19 @@ open class ItemUpdateWidget : AppWidgetProvider() {
                 data.widgetLabel.orEmpty()
             }
             val views = RemoteViews(context.packageName, layout)
-            views.setOnClickPendingIntent(R.id.outer_layout, itemUpdatePendingIntent)
-            views.setOnClickPendingIntent(R.id.edit, editPendingIntent)
+            views.setOnClickPendingIntent(android.R.id.background, itemUpdatePendingIntent)
+
+            val editButtonVisibility = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                View.GONE
+            } else {
+                views.setOnClickPendingIntent(R.id.edit, editPendingIntent)
+                View.VISIBLE
+            }
+            views.setViewVisibility(R.id.edit, editButtonVisibility)
+
             views.setTextViewText(R.id.text, label)
+            val alpha = if (label.isNotEmpty() && smallWidget) 76 else 255
+            views.setInt(R.id.item_icon, "setImageAlpha", alpha)
             hideLoadingIndicator(views)
             return views
         }
@@ -388,12 +393,31 @@ open class ItemUpdateWidget : AppWidgetProvider() {
         val widgetLabel: String?,
         val mappedState: String,
         val icon: IconResource?,
-        val theme: String,
         val showState: Boolean
     ) : Parcelable {
         fun isValid(): Boolean {
             return item.isNotEmpty() &&
                 label.isNotEmpty()
+        }
+
+        /**
+         * When comparing fields treat null as an empty string.
+         */
+        fun nearlyEquals(other: Any?): Boolean {
+            return when (other) {
+                null -> false
+                !is ItemUpdateWidgetData -> false
+                this -> true
+                else -> {
+                    this.item == other.item &&
+                        this.command.orEmpty() == other.command.orEmpty() &&
+                        this.label == other.label &&
+                        this.widgetLabel.orEmpty() == other.widgetLabel.orEmpty() &&
+                        this.mappedState == other.mappedState &&
+                        this.icon == other.icon &&
+                        this.showState == other.showState
+                }
+            }
         }
     }
 }

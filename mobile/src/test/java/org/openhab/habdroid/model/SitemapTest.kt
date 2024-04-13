@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -58,8 +58,14 @@ class SitemapTest {
     @Test
     fun testGetIcon() {
         assertNull(demoSitemapWithLabel.icon)
-        assertEquals("icon/home?format=SVG&anyFormat=true", homeSitemapWithoutLabel.icon?.toUrl(false, IconFormat.Svg))
-        assertEquals("icon/home?format=SVG&anyFormat=true", homeSitemapWithoutLabel.icon?.toUrl(true, IconFormat.Svg))
+        assertEquals(
+            "icon/home?format=SVG&anyFormat=true&iconset=classic",
+            homeSitemapWithoutLabel.icon?.toUrl(false, IconFormat.Svg, 64)
+        )
+        assertEquals(
+            "icon/home?format=SVG&anyFormat=true&iconset=classic",
+            homeSitemapWithoutLabel.icon?.toUrl(true, IconFormat.Svg, 64)
+        )
     }
 
     @Test

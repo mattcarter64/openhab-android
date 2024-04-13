@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2022 Contributors to the openHAB project
+ * Copyright (c) 2010-2024 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -23,10 +23,12 @@ import java.util.Locale
 import kotlinx.parcelize.Parcelize
 import org.json.JSONException
 import org.json.JSONObject
+import org.openhab.habdroid.R
 import org.openhab.habdroid.util.appendQueryParameter
 import org.openhab.habdroid.util.getIconFormat
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.getStringOrNull
+import kotlin.text.replace
 
 @Parcelize
 data class IconResource internal constructor(
@@ -35,28 +37,82 @@ data class IconResource internal constructor(
     internal val customState: String
 ) : Parcelable {
     fun toUrl(context: Context, includeState: Boolean): String {
-        return toUrl(includeState, context.getPrefs().getIconFormat())
+        val iconSize = context.resources.getDimensionPixelSize(R.dimen.widgetlist_icon_size)
+        return toUrl(includeState, context.getPrefs().getIconFormat(), iconSize)
     }
 
     @VisibleForTesting
-    fun toUrl(includeState: Boolean, iconFormat: IconFormat): String {
+    fun toUrl(includeState: Boolean, iconFormat: IconFormat, desiredSizePixels: Int): String {
         if (!isOh2) {
             return "images/$icon.png"
         }
 
-        val suffix = when (iconFormat) {
-            IconFormat.Png -> "PNG"
-            IconFormat.Svg -> "SVG"
+        var iconSource = "oh"
+        var iconSet = "classic"
+        var iconName = "none"
+
+        val segments = icon.split(":", limit = 3)
+        when (segments.size) {
+            1 -> iconName = segments[0]
+            2 -> {
+                iconSource = segments[0]
+                iconName = segments[1]
+                if (iconSource == "material") {
+                    iconSet = "baseline"
+                }
+            }
+            3 -> {
+                iconSource = segments[0]
+                iconSet = segments[1]
+                iconName = segments[2]
+            }
+        }
+
+        when (iconSource) {
+            "material" -> {
+                iconSource = "iconify"
+                iconName = "$iconSet-$iconName"
+                iconSet = "ic"
+            }
+            "f7" -> {
+                iconSource = "iconify"
+                iconSet = "f7"
+                iconName = iconName.replace("_", "-")
+            }
         }
 
         val builder = Uri.Builder()
-            .path("icon/")
-            .appendPath(icon)
-            .appendQueryParameter("format", suffix)
-            .appendQueryParameter("anyFormat", true)
 
-        if (customState.isNotEmpty() && includeState) {
-            builder.appendQueryParameter("state", customState)
+        when (iconSource) {
+            "if", "iconify" -> {
+                builder.scheme("https")
+                    .authority("api.iconify.design")
+                    .path(iconSet)
+                    .appendPath("$iconName.svg")
+                    .appendQueryParameter("height", desiredSizePixels.toString())
+            }
+            else -> {
+                val suffix = when (iconFormat) {
+                    IconFormat.Png -> "PNG"
+                    IconFormat.Svg -> "SVG"
+                }
+
+                // set unknown iconSource to oh:classic:none icon
+                if (iconSource != "oh") {
+                    iconSet = "classic"
+                    iconName = "none"
+                }
+
+                builder.path("icon")
+                       .appendPath(iconName)
+                       .appendQueryParameter("format", suffix)
+                       .appendQueryParameter("anyFormat", true)
+                       .appendQueryParameter("iconset", iconSet)
+
+                if (customState.isNotEmpty() && includeState) {
+                    builder.appendQueryParameter("state", customState)
+                }
+            }
         }
 
         return builder.build().toString()
@@ -102,41 +158,48 @@ fun String?.toOH2IconResource(): IconResource? {
     return if (isNullOrEmpty() || this == "none") null else IconResource(this, true, "")
 }
 
-internal fun String?.toOH2WidgetIconResource(item: Item?, type: Widget.Type, hasMappings: Boolean): IconResource? {
+internal fun String?.toOH2WidgetIconResource(
+    item: Item?,
+    type: Widget.Type,
+    hasMappings: Boolean,
+    useState: Boolean
+): IconResource? {
     if (isNullOrEmpty() || this == "none") {
         return null
     }
 
-    val itemState = item?.state
-    var iconState = itemState?.asString.orEmpty()
-    if (itemState != null) {
-        if (item.isOfTypeOrGroupType(Item.Type.Color)) {
-            // For items that control a color item fetch the correct icon
-            if (type == Widget.Type.Slider || type == Widget.Type.Switch && !hasMappings) {
-                try {
-                    iconState = itemState.asBrightness.toString()
-                    if (type == Widget.Type.Switch) {
-                        iconState = if (iconState == "0") "OFF" else "ON"
-                    }
-                } catch (e: Exception) {
-                    iconState = "OFF"
-                }
-            } else if (itemState.asHsv != null) {
-                val color = itemState.asHsv.toColor()
-                iconState = String.format(
-                    Locale.US, "#%02x%02x%02x",
-                    Color.red(color), Color.green(color), Color.blue(color)
-                )
+    val iconState = when {
+        !useState || item == null -> null
+        // For NULL states, we send 'null' as state when fetching the icon (BasicUI set a predecent for doing so)
+        item.state == null -> "null"
+        // Number items need to follow the format "<value>" or "<value> <unit>"
+        item.isOfTypeOrGroupType(Item.Type.Number) || item.isOfTypeOrGroupType(Item.Type.NumberWithDimension)-> {
+            item.state.asNumber?.let { numberState ->
+                val unitSuffix = numberState.unit?.let { " $it" } ?: ""
+                "${numberState.formatValue()}$unitSuffix"
             }
-        } else if (type == Widget.Type.Switch && !hasMappings && !item.isOfTypeOrGroupType(Item.Type.Rollershutter)) {
+        }
+        item.isOfTypeOrGroupType(Item.Type.Color) -> when {
+            // Color sliders just use the brightness part of the color
+            type == Widget.Type.Slider -> item.state.asBrightness.toString()
+            // Color toggles should behave similarly to the logic below (but using the brightness value)
+            type == Widget.Type.Switch && !hasMappings -> if (item.state.asBrightness == 0) "OFF" else "ON"
+            item.state.asHsv != null -> {
+                val color = item.state.asHsv.toColor()
+                String.format(Locale.US, "#%02x%02x%02x", Color.red(color), Color.green(color), Color.blue(color))
+            }
+            else -> item.state.asString
+        }
+        type == Widget.Type.Switch && !hasMappings && !item.isOfTypeOrGroupType(Item.Type.Rollershutter) -> {
             // For switch items without mappings (just ON and OFF) that control a dimmer item
             // and which are not ON or OFF already, set the state to "OFF" instead of 0
             // or to "ON" to fetch the correct icon
-            iconState = if (itemState.asString == "0" || itemState.asString == "OFF") "OFF" else "ON"
+            if (item.state.asString == "0" || item.state.asString == "OFF") "OFF" else "ON"
         }
+        else -> item.state.asString
     }
 
-    return IconResource(this, true, iconState)
+    return IconResource(this, true, iconState.orEmpty())
 }
 
 enum class IconFormat {
