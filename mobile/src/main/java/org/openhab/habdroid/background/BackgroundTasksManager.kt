@@ -255,11 +255,19 @@ class BackgroundTasksManager : BroadcastReceiver() {
                     key == PrefKeys.PRIMARY_SERVER_ID -> {
                     KNOWN_KEYS.forEach { knowKey -> scheduleWorker(context, knowKey, true) }
                 }
-                key in KNOWN_KEYS -> scheduleWorker(context, key, true)
+                key in KNOWN_KEYS -> scheduleWorker(context, key.toString(), true)
                 key == PrefKeys.SEND_DEVICE_INFO_SCHEDULE -> schedulePeriodicTrigger(context, true)
                 key == PrefKeys.FOSS_NOTIFICATIONS_ENABLED -> schedulePeriodicTrigger(context, false)
             }
         }
+
+        // override fun onSharedPreferenceChanged(p0: SharedPreferences?, p1: String?) {
+        //     TODO("Not yet implemented")
+        // }
+
+        // override fun onSharedPreferenceChanged(p0: SharedPreferences?, p1: String?) {
+        //     TODO("Not yet implemented")
+        // }
     }
 
     companion object {

@@ -251,14 +251,7 @@ abstract class AbstractTileService : TileService() {
                 tileServiceState,
                 PackageManager.DONT_KILL_APP
             )
-            try {
-                // Other users than the currently selected user may have tiles as well, which causes an exception.
-                requestListeningState(context, tileService)
-            } catch (e: SecurityException) {
-                Log.e(TAG, "Error updating tile", e)
-            } catch (e: IllegalArgumentException) {
-                Log.e(TAG, "Error updating tile", e)
-            }
+            requestListeningState(context, tileService)
         }
 
         @VisibleForTesting fun getClassNameForId(id: Int) = "org.openhab.habdroid.background.tiles.TileService$id"

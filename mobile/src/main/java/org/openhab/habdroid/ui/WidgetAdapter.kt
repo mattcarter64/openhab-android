@@ -19,6 +19,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.net.Uri
 import android.text.InputType.TYPE_CLASS_NUMBER
 import android.text.InputType.TYPE_CLASS_TEXT
 import android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
@@ -112,6 +113,7 @@ import org.openhab.habdroid.util.getIconFallbackColor
 import org.openhab.habdroid.util.getImageWidgetScalingType
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.orDefaultIfEmpty
+import org.videolan.libvlc.util.VLCVideoLayout
 import org.openhab.habdroid.util.resolveThemedColor
 
 /**
@@ -141,6 +143,7 @@ class WidgetAdapter(
     interface ItemClickListener {
         fun onItemClicked(widget: Widget): Boolean // returns whether click was handled
     }
+
     interface FragmentPresenter {
         fun showBottomSheet(sheet: AbstractWidgetBottomSheet, widget: Widget)
         fun showSelectionFragment(fragment: DialogFragment, widget: Widget)
@@ -220,6 +223,7 @@ class WidgetAdapter(
             TYPE_SETPOINT -> SetpointViewHolder(initData)
             TYPE_CHART -> ChartViewHolder(initData)
             TYPE_VIDEO -> VideoViewHolder(initData)
+            TYPE_VIDEO_RTSP -> RtspVideoViewHolder(initData)
             TYPE_WEB -> WebViewHolder(initData)
             TYPE_COLOR -> ColorViewHolder(initData)
             TYPE_VIDEO_MJPEG -> MjpegVideoViewHolder(initData)
@@ -337,6 +341,7 @@ class WidgetAdapter(
                 widget.mappingsOrItemOptions.isNotEmpty() -> TYPE_SECTIONSWITCH
                 else -> TYPE_SWITCH
             }
+
             Widget.Type.Text -> TYPE_TEXT
             Widget.Type.Slider -> TYPE_SLIDER
             Widget.Type.Image -> TYPE_IMAGE
@@ -345,8 +350,10 @@ class WidgetAdapter(
             Widget.Type.Chart -> TYPE_CHART
             Widget.Type.Video -> when {
                 "mjpeg".equals(widget.encoding, ignoreCase = true) -> TYPE_VIDEO_MJPEG
+                "rtsp".equals(widget.encoding, ignoreCase = true) -> TYPE_VIDEO_RTSP
                 else -> TYPE_VIDEO
             }
+
             Widget.Type.Webview -> TYPE_WEB
             Widget.Type.Colorpicker -> TYPE_COLOR
             Widget.Type.Mapview -> TYPE_LOCATION
@@ -392,6 +399,7 @@ class WidgetAdapter(
                 started = true
             }
         }
+
         fun stop(): Boolean {
             if (!started) {
                 return false
@@ -400,15 +408,18 @@ class WidgetAdapter(
             started = false
             return true
         }
+
         fun attach() {
             start()
             scope = CoroutineScope(Dispatchers.Main + Job())
         }
+
         fun detach() {
             stop()
             scope?.cancel()
             scope = null
         }
+
         open fun onStart() {}
         open fun onStop() {}
         open fun handleRowClick() {}
@@ -697,6 +708,7 @@ class WidgetAdapter(
                     val state = newValue.let { ParsedState.parseAsNumber(it, item.state?.asNumber?.format) }
                     connection.httpClient.sendItemUpdate(item, state)
                 }
+
                 else -> connection.httpClient.sendItemCommand(item, newValue)
             }
 
@@ -719,10 +731,13 @@ class WidgetAdapter(
                 !displayState.isNullOrEmpty() -> displayState
                 widget.inputHint == Widget.InputTypeHint.Date ->
                     dateTimeState?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT))
+
                 widget.inputHint == Widget.InputTypeHint.Time ->
                     dateTimeState?.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+
                 widget.inputHint == Widget.InputTypeHint.Datetime ->
                     dateTimeState?.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT))
+
                 else -> dateTimeState?.toString()
             }
             valueView?.isVisible = !valueView?.text.isNullOrEmpty()
@@ -824,8 +839,8 @@ class WidgetAdapter(
             table.columnCount = min(mappings.maxOfOrNull { it.column } ?: 0, maxColumns)
             (0 until table.rowCount).forEach { row ->
                 (0 until table.columnCount).forEach { column ->
-                    val buttonView = spareViews.removeFirstOrNull() ?:
-                        initData.inflater.inflate(R.layout.widgetlist_sectionswitchitem_button, table, false)
+                    val buttonView = spareViews.removeFirstOrNull()
+                        ?: initData.inflater.inflate(R.layout.widgetlist_sectionswitchitem_button, table, false)
                             as MaterialButton
                     // Rows and columns start with 1 in Sitemap definition, thus decrement them here
                     val mapping = mappings.firstOrNull { it.row - 1 == row && it.column - 1 == column }
@@ -1144,6 +1159,7 @@ class WidgetAdapter(
         View.OnLongClickListener {
         private val upButton = itemView.findViewById<View>(R.id.up_button)
         private val downButton = itemView.findViewById<View>(R.id.down_button)
+
         data class UpDownButtonState(val item: Item?, val command: String, var inLongPress: Boolean = false)
 
         init {
@@ -1423,6 +1439,120 @@ class WidgetAdapter(
         }
     }
 
+    class RtspVideoViewHolder internal constructor(private val initData: ViewHolderInitData) :
+        ViewHolder(initData, R.layout.widgetlist_vlcrtspvideolayout) {
+
+        // private val initData = initData
+        private val videoView: VLCVideoLayout = itemView.findViewById(R.id.vlcrtspvideolayout)
+        private var vlcPlayer = VlcPlayer()
+
+        // init {
+        //     Log.d(TAG, "init:")
+        // }
+
+        override fun bind(widget: Widget) {
+
+            Log.d(TAG, "bind:")
+
+            vlcPlayer.setup(initData.parent.context, videoView)
+
+            Log.d(TAG, "bind: media player setup complete")
+
+            val newVideoUrl = setupVideoUrl(widget)
+
+            Log.d(TAG, "bind: resolved vide url = $newVideoUrl")
+
+            vlcPlayer.setVideoUrl(newVideoUrl)
+        }
+
+        override fun onStart() {
+
+            Log.d(TAG, "onStart:")
+
+            vlcPlayer.start()
+        }
+
+        override fun onStop() {
+
+            Log.d(TAG, "onStop:")
+
+            vlcPlayer.stop()
+        }
+
+        private fun setupVideoUrl(widget: Widget): String? {
+
+            if (widget.encoding.equals("rtsp", ignoreCase = true)) {
+                val state = widget.item?.state?.asString
+                if (state != null && widget.item.type == Item.Type.StringItem) {
+                    return replaceHost(state)
+                }
+            }
+            return replaceHost(widget.url)
+        }
+
+        private fun replaceHost(videoUrl: String?): String? {
+
+            Log.d(TAG, "replaceHost: url=$videoUrl")
+
+            var newVideoUrl = videoUrl
+
+            // TODO rtsp host
+            val rtspHost: String? = connection.rtspHost
+
+            Log.d(TAG, "replaceHost: RTSP host from settings=$rtspHost")
+
+            val tempUri = Uri.parse(videoUrl)
+
+            Log.d(TAG, "replaceHost: authority=" + tempUri.authority + ", enc authority=" + tempUri.encodedAuthority)
+
+            if (rtspHost != null) {
+                var newhost = tempUri.authority
+
+                if (newhost != null && newhost.contains(":")) {
+                    val toks = newhost.split(":")
+
+                    Log.d(TAG, "replaceHost: toks[0]=" + toks[0] + ", toks[1]=" + toks[1])
+
+                    newhost = newhost.replace(toks[0], rtspHost)
+
+                    Log.d(TAG, "replaceHost: toks[0]=" + toks[0] + ", toks[1]=" + toks[1] + ", newhost=" + newhost)
+                }
+
+                Log.d(TAG, "replaceHost: newhost=$newhost")
+
+                val builder = Uri.Builder().scheme(tempUri.scheme).path(tempUri.path)
+
+                builder.authority(newhost)
+                builder.encodedAuthority(newhost)
+
+                for (key in tempUri.queryParameterNames) {
+                    // strip audio foo if it exists
+                    val param = tempUri.getQueryParameter(key)
+                    Log.v(TAG, "replaceHost: key=$key, param=$param")
+                    if (!key.contains("audio.cgi")) {
+                        builder.appendQueryParameter(key, param)
+                    }
+                }
+
+                newVideoUrl = Uri.decode(builder.build().toString())
+            }
+
+            Log.d(TAG, "replaceHost: updated url=$newVideoUrl")
+
+            return newVideoUrl
+        }
+
+        // private fun getAudioUrl(url: String?): String? {
+        //     val tempUri = Uri.parse(url)
+        //     for (key in tempUri.queryParameterNames) {
+        //         if (key.contains("audio.cgi")) {
+        //             return key
+        //         }
+        //     }
+        //     return null
+        // }
+    }
+
     class WebViewHolder internal constructor(initData: ViewHolderInitData) :
         HeavyDataViewHolder(initData, R.layout.widgetlist_webitem) {
         private val webView = widgetContentView as WebView
@@ -1464,6 +1594,7 @@ class WidgetAdapter(
         View.OnLongClickListener {
         private val upButton = itemView.findViewById<View>(R.id.up_button)
         private val downButton = itemView.findViewById<View>(R.id.down_button)
+
         data class UpDownButtonState(
             val item: Item?,
             val shortCommand: String,
@@ -1565,6 +1696,7 @@ class WidgetAdapter(
                 openPopup()
             }
         }
+
         protected abstract fun openPopup()
     }
 
@@ -1632,10 +1764,12 @@ class WidgetAdapter(
         private const val TYPE_DATETIMEINPUT = 20
         private const val TYPE_BUTTONGRID = 21
         private const val TYPE_INVISIBLE = 22
+        private const val TYPE_VIDEO_RTSP = 23
 
         private fun toInternalViewType(viewType: Int, compactMode: Boolean): Int {
             return viewType or (if (compactMode) 0x100 else 0)
         }
+
         private fun fromInternalViewType(viewType: Int): Pair<Int, Boolean> {
             val compactMode = (viewType and 0x100) != 0
             return Pair(viewType and 0xff, compactMode)

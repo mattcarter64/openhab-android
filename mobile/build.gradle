@@ -50,7 +50,7 @@ android {
         compileSdk 34
         targetSdkVersion 33
         versionCode 524
-        versionName "3.12.1-beta"
+        versionName "3.12.1-mcsoft"
         multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "long", "TIMESTAMP", System.currentTimeMillis() + "L"
@@ -108,7 +108,7 @@ android {
             "-opt-in=kotlinx.coroutines.ObsoleteCoroutinesApi",
             "-opt-in=kotlinx.coroutines.DelicateCoroutinesApi"
         ]
-        allWarningsAsErrors = true
+        allWarningsAsErrors = false
     }
     lint {
         abortOnError false
@@ -143,6 +143,9 @@ repositories {
 
 dependencies {
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"
+//    implementation fileTree(dir: 'libs', include: ['*player*debug.jar'])
+    implementation 'org.videolan.android:libvlc-all:3.6.0-eap12'
+
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlin_coroutines_version"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-jdk9:$kotlin_coroutines_version"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlin_coroutines_version"
@@ -182,7 +185,7 @@ dependencies {
     implementation "com.mikepenz:aboutlibraries:$about_libraries_version"
 
     // Firebase
-    implementation platform("com.google.firebase:firebase-bom:25.11.0")
+    implementation platform("com.google.firebase:firebase-bom:32.8.1")
     fullImplementation "com.google.firebase:firebase-messaging-ktx"
     fullImplementation "com.google.firebase:firebase-crashlytics-ktx"
 

@@ -15,6 +15,8 @@ package org.openhab.habdroid.ui
 
 import android.Manifest
 import android.app.Dialog
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
@@ -62,9 +64,12 @@ import androidx.core.view.isVisible
 import androidx.core.widget.ContentLoadingProgressBar
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.gms.tasks.Task
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.messaging.FirebaseMessaging
 import de.duenndns.ssl.MemorizingTrustManager
 import java.nio.charset.Charset
 import java.util.concurrent.CancellationException
@@ -100,6 +105,7 @@ import org.openhab.habdroid.core.connection.NoUrlInformationException
 import org.openhab.habdroid.core.connection.WrongWifiException
 import org.openhab.habdroid.model.LinkedPage
 import org.openhab.habdroid.model.ServerConfiguration
+import org.openhab.habdroid.model.ServerPath
 import org.openhab.habdroid.model.ServerProperties
 import org.openhab.habdroid.model.Sitemap
 import org.openhab.habdroid.model.WebViewUi
@@ -270,6 +276,39 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
         }
 
         processIntent(intent)
+
+        /////////////////////////////////////////////////////////////////////////
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Log.d(TAG, "Start mcsoft notifications")
+
+            // Create channel to show notifications.
+            val channelId = getString(R.string.default_notification_channel_id)
+            val channelName = getString(R.string.default_notification_channel_name)
+            val notificationManager: NotificationManager? = getSystemService(NotificationManager::class.java)
+
+            notificationManager!!.createNotificationChannel(
+                NotificationChannel(
+                    channelId,
+                    channelName, NotificationManager.IMPORTANCE_LOW
+                )
+            )
+
+            //subscribe_topic
+            FirebaseMessaging.getInstance().subscribeToTopic("mcsoft")
+                .addOnCompleteListener(object : OnCompleteListener<Void?> {
+                    override fun onComplete(task: Task<Void?>) {
+                        var msg: String? = getString(R.string.msg_subscribed)
+                        if (!task.isSuccessful()) {
+                            msg = getString(R.string.msg_subscribe_failed)
+                        }
+                    }
+                })
+
+            Log.d(TAG, "End mcsoft notifications")
+        }
+
+        /////////////////////////////////////////////////////////////////////////
 
         if (prefs.getBoolean(PrefKeys.FIRST_START, true) ||
             prefs.getBoolean(PrefKeys.RECENTLY_RESTORED, false)

@@ -40,6 +40,7 @@
     <string name="settings_openhab_alturl_summary">The URL of the openHAB dashboard used when the local address is unavailable. Current setting: %s</string>
     <string name="settings_openhab_username">Username</string>
     <string name="settings_openhab_password">Password</string>
+    <string name="settings_openhab_rtsphost">RTSP Host</string>
     <string name="settings_openhab_password_summary_weak">Weak password set</string>
     <string name="settings_openhab_password_summary_strong">Strong password set</string>
     <string name="settings_openhab_api_token_hint">If you\'re using an API token, enter it in the username field and leave the password field empty</string>
@@ -773,7 +774,10 @@
     <string name="tile_icon_lamp_floor_value" translatable="false">lamp_floor</string>
     <string name="tile_icon_lamp_bedside_value" translatable="false">lamp_bedside</string>
     <string name="tile_icon_lamp_outdoor_value" translatable="false">lamp_outdoor</string>
-
+    <string name="default_notification_channel_id" translatable="false">fcm_default_channel</string>
+    <string name="default_notification_channel_name" translatable="true">mcsoft</string>
+    <string name="msg_subscribed">Subscribed to mcsoft topic</string>
+    <string name="msg_subscribe_failed">Failed to subscribe to mcsoft topic</string>
     <!-- Item tag type labels -->
     <string name="item_tag_location_apartment">Apartment</string>
     <string name="item_tag_location_attic">Attic</string>

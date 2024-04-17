@@ -18,6 +18,7 @@ import android.os.Parcelable
 import android.util.Log
 import androidx.core.content.edit
 import kotlinx.parcelize.Parcelize
+import org.openhab.habdroid.core.FcmMessageListenerService
 import org.openhab.habdroid.util.PrefKeys
 import org.openhab.habdroid.util.getActiveServerId
 import org.openhab.habdroid.util.getConfiguredServerIds
@@ -32,26 +33,34 @@ import org.openhab.habdroid.util.toNormalizedUrl
 data class ServerPath(
     val url: String,
     val userName: String?,
-    val password: String?
+    val password: String?,
+    val rtsphost: String?
 ) : Parcelable {
     // If the user name is longer than 50 chars, assume it's an API token and therefore no password is required.
     fun hasAuthentication() = !userName.isNullOrEmpty() && (!password.isNullOrEmpty() || userName.length > 50)
 
     companion object {
+        private val TAG = FcmMessageListenerService::class.java.simpleName
+
         internal fun load(
             prefs: SharedPreferences,
             secretPrefs: SharedPreferences,
             serverId: Int,
             urlKeyPrefix: String,
             userNamePrefix: String,
-            passwordPrefix: String
+            passwordPrefix: String,
+            rtsphostPrefix: String
         ): ServerPath? {
             val url = prefs.getStringOrNull(PrefKeys.buildServerKey(serverId, urlKeyPrefix)).toNormalizedUrl()
                 ?: return null
+
+            Log.d(TAG,"rtsphost: " + secretPrefs.getStringOrNull(PrefKeys.buildServerKey(serverId, rtsphostPrefix)))
+
             return ServerPath(
                 url,
                 secretPrefs.getStringOrNull(PrefKeys.buildServerKey(serverId, userNamePrefix)),
-                secretPrefs.getStringOrNull(PrefKeys.buildServerKey(serverId, passwordPrefix))
+                secretPrefs.getStringOrNull(PrefKeys.buildServerKey(serverId, passwordPrefix)),
+                secretPrefs.getStringOrNull(PrefKeys.buildServerKey(serverId, rtsphostPrefix))
             )
         }
     }
@@ -94,8 +103,10 @@ data class ServerConfiguration(
         secretPrefs.edit {
             putString(PrefKeys.buildServerKey(id, PrefKeys.LOCAL_USERNAME_PREFIX), localPath?.userName)
             putString(PrefKeys.buildServerKey(id, PrefKeys.LOCAL_PASSWORD_PREFIX), localPath?.password)
+            putString(PrefKeys.buildServerKey(id, PrefKeys.LOCAL_RTSPHOST_PREFIX), localPath?.rtsphost)
             putString(PrefKeys.buildServerKey(id, PrefKeys.REMOTE_USERNAME_PREFIX), remotePath?.userName)
             putString(PrefKeys.buildServerKey(id, PrefKeys.REMOTE_PASSWORD_PREFIX), remotePath?.password)
+            putString(PrefKeys.buildServerKey(id, PrefKeys.REMOTE_RTSPHOST_PREFIX), remotePath?.rtsphost)
         }
     }
 
@@ -125,8 +136,10 @@ data class ServerConfiguration(
         secretPrefs.edit {
             remove(PrefKeys.buildServerKey(id, PrefKeys.LOCAL_USERNAME_PREFIX))
             remove(PrefKeys.buildServerKey(id, PrefKeys.LOCAL_PASSWORD_PREFIX))
+            remove(PrefKeys.buildServerKey(id, PrefKeys.LOCAL_RTSPHOST_PREFIX))
             remove(PrefKeys.buildServerKey(id, PrefKeys.REMOTE_USERNAME_PREFIX))
             remove(PrefKeys.buildServerKey(id, PrefKeys.REMOTE_PASSWORD_PREFIX))
+            remove(PrefKeys.buildServerKey(id, PrefKeys.REMOTE_RTSPHOST_PREFIX))
         }
     }
 
@@ -137,6 +150,7 @@ data class ServerConfiguration(
                 path.url,
                 if (path.userName.isNullOrEmpty()) "<none>" else "<redacted>",
                 if (path.password.isNullOrEmpty()) "<none>" else "<redacted>",
+                path.rtsphost
             )
         }
 
@@ -163,7 +177,8 @@ data class ServerConfiguration(
                 id,
                 PrefKeys.LOCAL_URL_PREFIX,
                 PrefKeys.LOCAL_USERNAME_PREFIX,
-                PrefKeys.LOCAL_PASSWORD_PREFIX
+                PrefKeys.LOCAL_PASSWORD_PREFIX,
+                PrefKeys.LOCAL_RTSPHOST_PREFIX
             )
             val remotePath = ServerPath.load(
                 prefs,
@@ -171,7 +186,8 @@ data class ServerConfiguration(
                 id,
                 PrefKeys.REMOTE_URL_PREFIX,
                 PrefKeys.REMOTE_USERNAME_PREFIX,
-                PrefKeys.REMOTE_PASSWORD_PREFIX
+                PrefKeys.REMOTE_PASSWORD_PREFIX,
+                PrefKeys.REMOTE_RTSPHOST_PREFIX
             )
             val serverName = prefs.getStringOrNull(PrefKeys.buildServerKey(id, PrefKeys.SERVER_NAME_PREFIX))
             if ((localPath == null && remotePath == null) || serverName.isNullOrEmpty()) {

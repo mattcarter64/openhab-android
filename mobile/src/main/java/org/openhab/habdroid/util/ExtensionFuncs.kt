@@ -575,7 +575,7 @@ fun ServiceInfo.addToPrefs(context: Context) {
     val config = ServerConfiguration(
         context.getPrefs().getNextAvailableServerId(),
         context.getString(R.string.openhab),
-        ServerPath("https://$address:$port", null, null),
+        ServerPath("https://$address:$port", null, null, null),
         null,
         null,
         null,

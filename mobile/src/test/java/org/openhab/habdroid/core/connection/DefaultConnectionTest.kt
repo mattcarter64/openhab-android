@@ -40,17 +40,17 @@ class DefaultConnectionTest {
         testConnection = DefaultConnection(
             client,
             Connection.TYPE_LOCAL,
-            ServerPath(TEST_BASE_URL, null, null)
+            ServerPath(TEST_BASE_URL, null, null, null)
         )
         testConnectionRemote = DefaultConnection(
             client,
             Connection.TYPE_REMOTE,
-            ServerPath("", null, null)
+            ServerPath("", null, null, null)
         )
         testConnectionCloud = DefaultConnection(
             client,
             Connection.TYPE_CLOUD,
-            ServerPath("", null, null)
+            ServerPath("", null, null, null)
         )
     }
 
@@ -84,7 +84,7 @@ class DefaultConnectionTest {
         val connection = DefaultConnection(
             client,
             Connection.TYPE_LOCAL,
-            ServerPath(TEST_BASE_URL, "Test-User", null)
+            ServerPath(TEST_BASE_URL, "Test-User", null, null)
         )
         assertEquals("Test-User", connection.username)
     }
@@ -94,7 +94,7 @@ class DefaultConnectionTest {
         val connection = DefaultConnection(
             client,
             Connection.TYPE_LOCAL,
-            ServerPath(TEST_BASE_URL, null, "Test-Password")
+            ServerPath(TEST_BASE_URL, null, "Test-Password", null)
         )
         assertEquals("Test-Password", connection.password)
     }
@@ -129,7 +129,7 @@ class DefaultConnectionTest {
             val connection = DefaultConnection(
                 client,
                 Connection.TYPE_LOCAL,
-                ServerPath(TEST_BASE_URL, it.first, it.second)
+                ServerPath(TEST_BASE_URL, it.first, it.second, null)
             )
             val httpClient = connection.httpClient
 

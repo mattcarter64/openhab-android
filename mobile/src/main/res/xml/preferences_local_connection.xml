@@ -29,6 +29,14 @@
         android:autofillHints="password"
         app:whitespaceBehavior="trim"
         android:icon="@drawable/ic_shield_key_outline_grey_24dp" />
+    <org.openhab.habdroid.ui.preference.widgets.CustomInputTypePreference
+        android:defaultValue="@string/empty_string"
+        android:persistent="false"
+        android:inputType="textNoSuggestions"
+        android:key="rtsphost"
+        android:title="@string/settings_openhab_rtsphost"
+        android:autofillHints="RTSP host"
+        android:icon="@drawable/ic_earth_grey_24dp" />
     <org.openhab.habdroid.ui.preference.widgets.InfoPreference
         android:key="api_token_hint"
         app:infoUrl="https://www.openhab.org/docs/configuration/restdocs.html#authentication"

@@ -35,9 +35,11 @@ import javax.net.ssl.X509KeyManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.ClosedSendChannelException
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.channels.onClosed
+// import kotlinx.coroutines.channels.onClosed
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -63,6 +65,7 @@ import org.openhab.habdroid.util.isDemoModeEnabled
  * data from the openHAB server or another supported source
  * (see the constants in [Connection]).
  */
+@OptIn(ObsoleteCoroutinesApi::class)
 class ConnectionFactory internal constructor(
     private val context: Context,
     private val prefs: SharedPreferences,
@@ -540,15 +543,10 @@ class ConnectionFactory internal constructor(
             PrefKeys.DEMO_MODE, PrefKeys.ACTIVE_SERVER_ID, PrefKeys.PRIMARY_SERVER_ID
         )
         private val UPDATE_TRIGGERING_PREFIXES = listOf(
-            PrefKeys.LOCAL_URL_PREFIX,
-            PrefKeys.REMOTE_URL_PREFIX,
-            PrefKeys.LOCAL_USERNAME_PREFIX,
-            PrefKeys.LOCAL_PASSWORD_PREFIX,
-            PrefKeys.REMOTE_USERNAME_PREFIX,
-            PrefKeys.REMOTE_PASSWORD_PREFIX,
-            PrefKeys.SSL_CLIENT_CERT_PREFIX,
-            PrefKeys.WIFI_SSID_PREFIX,
-            PrefKeys.RESTRICT_TO_SSID_PREFIX
+            PrefKeys.LOCAL_URL_PREFIX, PrefKeys.REMOTE_URL_PREFIX,
+            PrefKeys.LOCAL_USERNAME_PREFIX, PrefKeys.LOCAL_PASSWORD_PREFIX, PrefKeys.LOCAL_RTSPHOST_PREFIX,
+            PrefKeys.REMOTE_USERNAME_PREFIX, PrefKeys.REMOTE_PASSWORD_PREFIX, PrefKeys.REMOTE_RTSPHOST_PREFIX,
+            PrefKeys.SSL_CLIENT_CERT_PREFIX
         )
         private val CLIENT_CERT_UPDATE_TRIGGERING_PREFIXES = listOf(PrefKeys.SSL_CLIENT_CERT_PREFIX)
 
