@@ -25,11 +25,13 @@ import android.os.Build
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import org.openhab.habdroid.R
 import org.openhab.habdroid.background.NotificationUpdateObserver
 import org.openhab.habdroid.core.connection.ConnectionFactory
-import org.openhab.habdroid.model.CloudNotification
+import org.openhab.habdroid.model.CloudMessage
+import org.openhab.habdroid.model.CloudNotificationId
 import org.openhab.habdroid.model.IconResource
 import org.openhab.habdroid.ui.MainActivity
 import org.openhab.habdroid.util.HttpClient
@@ -45,59 +47,84 @@ import org.openhab.habdroid.util.getPrefs
 class NotificationHelper(private val context: Context) {
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    suspend fun showNotification(
-        notificationId: Int,
-        message: CloudNotification,
-        deleteIntent: PendingIntent?,
-        summaryDeleteIntent: PendingIntent?
-    ) {
-        createChannelForSeverity(message.severity)
-
-        val n = makeNotification(
-            message,
-            notificationId,
-            deleteIntent
-        )
-
-        notificationManager.notify(notificationId, n)
-
-        if (HAS_GROUPING_SUPPORT) {
-            val count = countCloudNotifications(notificationManager.activeNotifications)
-            if (count > 1) {
-                notificationManager.notify(
-                    SUMMARY_NOTIFICATION_ID,
-                    makeSummaryNotification(count, message.createdTimestamp, summaryDeleteIntent)
-                )
+    suspend fun handleNewCloudMessage(message: CloudMessage) = when (message) {
+        is CloudMessage.CloudNotification -> showNotification(message)
+        is CloudMessage.CloudHideNotificationRequest -> {
+            if (!message.tag.isNullOrEmpty()) {
+                cancelNotificationsByTag(message.tag)
+            } else {
+                cancelNotificationById(message.id)
             }
         }
     }
 
-    fun cancelNotification(notificationId: Int) {
-        notificationManager.cancel(notificationId)
+    fun cancelNotificationById(id: CloudNotificationId) {
+        notificationManager.cancel(id.notificationId)
         if (HAS_GROUPING_SUPPORT) {
             val active = notificationManager.activeNotifications
-            if (notificationId != SUMMARY_NOTIFICATION_ID && countCloudNotifications(active) == 0) {
+            if (countCloudNotifications(active) == 0) {
                 // Cancel summary when removing the last sub-notification
                 notificationManager.cancel(SUMMARY_NOTIFICATION_ID)
-            } else if (notificationId == SUMMARY_NOTIFICATION_ID) {
-                // Cancel all sub-notifications when removing the summary
-                for (n in active) {
-                    notificationManager.cancel(n.id)
-                }
+            } else {
+                updateGroupNotification()
             }
         }
     }
 
-    private fun createChannelForSeverity(severity: String?) {
+    private fun cancelNotificationsByTag(tag: String) {
+        val channelId = getChannelId(tag)
+        NotificationManagerCompat.from(context)
+            .activeNotifications
+            .filter { sbn -> NotificationCompat.getChannelId(sbn.notification) == channelId }
+            .forEach { sbn -> notificationManager.cancel(sbn.id) }
+    }
+
+    private suspend fun showNotification(message: CloudMessage.CloudNotification) {
+        createChannelForTag(message.tag)
+        val n = makeNotification(message)
+        notificationManager.notify(message.id.notificationId, n)
+        updateGroupNotification()
+    }
+
+    fun handleNotificationDismissed(notificationId: Int) {
+        if (!HAS_GROUPING_SUPPORT) {
+            return
+        }
+        if (notificationId == SUMMARY_NOTIFICATION_ID) {
+            // Cancel all sub-notifications when removing the summary
+            notificationManager.activeNotifications.forEach { notificationManager.cancel(it.id) }
+        } else {
+            updateGroupNotification()
+        }
+    }
+
+    private fun updateGroupNotification() {
+        if (!HAS_GROUPING_SUPPORT) {
+            return
+        }
+        val count = countCloudNotifications(notificationManager.activeNotifications)
+        if (count > 1) {
+            val deleteIntent = NotificationHandlingReceiver.createDismissedPendingIntent(
+                context,
+                SUMMARY_NOTIFICATION_ID
+            )
+            notificationManager.notify(
+                SUMMARY_NOTIFICATION_ID,
+                makeSummaryNotification(count, System.currentTimeMillis(), deleteIntent)
+            )
+        }
+    }
+
+    private fun createChannelForTag(tag: String?) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return
         }
         NotificationUpdateObserver.createNotificationChannels(context)
-        if (!severity.isNullOrEmpty()) {
+        if (!tag.isNullOrEmpty()) {
             with(
                 NotificationChannel(
-                    getChannelId(severity),
-                    context.getString(R.string.notification_channel_severity_value, severity),
+                    getChannelId(tag),
+                    context.getString(R.string.notification_channel_severity_value, tag),
                     NotificationManager.IMPORTANCE_DEFAULT
                 )
             ) {
@@ -106,7 +133,7 @@ class NotificationHelper(private val context: Context) {
                 enableLights(true)
                 lightColor = ContextCompat.getColor(context, R.color.openhab_orange)
                 group = NotificationUpdateObserver.CHANNEL_GROUP_MESSAGES
-                description = context.getString(R.string.notification_channel_severity_value_description, severity)
+                description = context.getString(R.string.notification_channel_severity_value_description, tag)
                 notificationManager.createNotificationChannel(this)
             }
         }
@@ -117,36 +144,59 @@ class NotificationHelper(private val context: Context) {
         return active.count { n -> n.id != 0 && (n.groupKey?.endsWith("gcm") == true) }
     }
 
-    private suspend fun makeNotification(
-        message: CloudNotification,
-        notificationId: Int,
-        deleteIntent: PendingIntent?
-    ): Notification {
+    private suspend fun makeNotification(message: CloudMessage.CloudNotification): Notification {
         val iconBitmap = getNotificationIcon(message.icon)
 
-        val contentIntent = makeNotificationClickIntent(message.id, notificationId)
-        val channelId = getChannelId(message.severity)
-
-        val publicText = context.resources.getQuantityString(
-            R.plurals.summary_notification_text, 1, 1
+        val contentIntent = if (message.onClickAction == null) {
+            makeNotificationClickIntent(message.id, message.id.notificationId)
+        } else {
+            NotificationHandlingReceiver.createActionPendingIntent(context, message.id, message.onClickAction)
+        }
+        val deleteIntent = NotificationHandlingReceiver.createDismissedPendingIntent(
+            context,
+            message.id.notificationId
         )
+        val channelId = getChannelId(message.tag)
+
+        val publicText = context.resources.getQuantityString(R.plurals.summary_notification_text, 1, 1)
         val publicVersion = makeNotificationBuilder(channelId, message.createdTimestamp)
             .setContentText(publicText)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(contentIntent)
             .build()
 
-        return makeNotificationBuilder(channelId, message.createdTimestamp)
+        val builder = makeNotificationBuilder(channelId, message.createdTimestamp)
             .setLargeIcon(iconBitmap)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message.message))
             .setSound(context.getPrefs().getNotificationTone())
+            .setContentTitle(message.title)
             .setContentText(message.message)
-            .setSubText(message.severity)
+            .setSubText(message.tag)
             .setContentIntent(contentIntent)
             .setDeleteIntent(deleteIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(publicVersion)
-            .build()
+
+        val messageImage = if (message.mediaAttachmentUrl != null) {
+            ConnectionFactory.waitForInitialization()
+            ConnectionFactory.primaryUsableConnection?.connection?.let {
+                message.loadImage(it, context, context.resources.displayMetrics.widthPixels)
+            }
+        } else {
+            null
+        }
+        if (messageImage != null) {
+            builder.setStyle(NotificationCompat.BigPictureStyle().bigPicture(messageImage))
+        } else {
+            builder.setStyle(NotificationCompat.BigTextStyle().bigText(message.message))
+        }
+
+        message.actions?.forEach {
+            val pi = NotificationHandlingReceiver.createActionPendingIntent(context, message.id, it)
+            val action = NotificationCompat.Action(null, it.label, pi)
+            builder.addAction(action)
+        }
+
+        return builder.build()
     }
 
     private suspend fun getNotificationIcon(icon: IconResource?): Bitmap? {
@@ -189,14 +239,11 @@ class NotificationHelper(private val context: Context) {
     }
 
     @TargetApi(24)
-    fun makeSummaryNotification(
-        subNotificationCount: Int,
-        timestamp: Long,
-        deleteIntent: PendingIntent?
-    ): Notification {
+    fun makeSummaryNotification(subNotificationCount: Int, timestamp: Long, deleteIntent: PendingIntent): Notification {
         val text = context.resources.getQuantityString(
             R.plurals.summary_notification_text,
-            subNotificationCount, subNotificationCount
+            subNotificationCount,
+            subNotificationCount
         )
         val clickIntent = makeNotificationClickIntent(null, SUMMARY_NOTIFICATION_ID)
         val publicVersion = makeNotificationBuilder(
@@ -219,15 +266,11 @@ class NotificationHelper(private val context: Context) {
             .build()
     }
 
-    private fun makeNotificationClickIntent(
-        persistedId: String?,
-        notificationId: Int
-    ): PendingIntent {
+    private fun makeNotificationClickIntent(id: CloudNotificationId?, notificationId: Int): PendingIntent {
         val contentIntent = Intent(context, MainActivity::class.java).apply {
             action = MainActivity.ACTION_NOTIFICATION_SELECTED
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(EXTRA_NOTIFICATION_ID, notificationId)
-            putExtra(MainActivity.EXTRA_PERSISTED_NOTIFICATION_ID, persistedId)
+            putExtra(MainActivity.EXTRA_PERSISTED_NOTIFICATION_ID, id?.persistedId)
         }
         return PendingIntent.getActivity(
             context,
@@ -237,26 +280,26 @@ class NotificationHelper(private val context: Context) {
         )
     }
 
-    private fun makeNotificationBuilder(
-        channelId: String,
-        timestamp: Long
-    ) = NotificationCompat.Builder(context, channelId)
-        .setSmallIcon(R.drawable.ic_openhab_appicon_white_24dp)
-        .setWhen(timestamp)
-        .setShowWhen(timestamp != 0L)
-        .setColor(ContextCompat.getColor(context, R.color.openhab_orange))
-        .setAutoCancel(true)
-        .setLights(ContextCompat.getColor(context, R.color.openhab_orange), 3000, 3000)
-        .setVibrate(context.getPrefs().getNotificationVibrationPattern(context))
-        .setGroup("gcm")
+    private fun makeNotificationBuilder(channelId: String, timestamp: Long) =
+        NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_openhab_appicon_white_24dp)
+            .setWhen(timestamp)
+            .setShowWhen(timestamp != 0L)
+            .setColor(ContextCompat.getColor(context, R.color.openhab_orange))
+            .setAutoCancel(true)
+            .setLights(ContextCompat.getColor(context, R.color.openhab_orange), 3000, 3000)
+            .setVibrate(context.getPrefs().getNotificationVibrationPattern(context))
+            .setGroup("gcm")
 
     companion object {
         private val TAG = NotificationHelper::class.java.simpleName
-        private fun getChannelId(severity: String?) = if (severity.isNullOrEmpty())
-            NotificationUpdateObserver.CHANNEL_ID_MESSAGE_DEFAULT else "severity-$severity"
 
-        @Suppress("MemberVisibilityCanBePrivate") // Used in full flavor
-        internal const val EXTRA_NOTIFICATION_ID = "notificationId"
+        private fun getChannelId(tag: String?) = if (tag.isNullOrEmpty()) {
+            NotificationUpdateObserver.CHANNEL_ID_MESSAGE_DEFAULT
+        } else {
+            "severity-$tag"
+        }
+
         internal const val SUMMARY_NOTIFICATION_ID = 0
 
         // Notification grouping is only available on N or higher, as mentioned in

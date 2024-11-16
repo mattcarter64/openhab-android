@@ -9,7 +9,7 @@
     <string name="delete">Elimina</string>
     <string name="attribution_tag_discover_server">Trova openHAB server</string>
     <string name="attribution_tag_select_server_wifi">Seleziona server su Wi-Fi</string>
-    <string name="attribution_tag_suggest_turn_on_wifi">Consigliato di accendere il Wi-Fi</string>
+    <string name="attribution_tag_suggest_turn_on_wifi">Consigliato di attivare il Wi-Fi</string>
     <!-- Main menu items -->
     <string name="mainmenu_openhab_sitemaps">Sitemaps</string>
     <string name="mainmenu_openhab_preferences">Impostazioni</string>
@@ -74,6 +74,7 @@
     <string name="settings_no_default_sitemap">Nessun Sitemap predefinito selezionato</string>
     <!-- %1$s: Default Sitemap label -->
     <string name="settings_current_default_sitemap">Sitemap predefinito attuale: %1$s</string>
+    <string name="settings_main_ui_start_page">Pagina Iniziale Main UI</string>
     <string name="settings_ui_command_item">Item comando UI</string>
     <string name="settings_ui_command_item_summary_on">La sitemap può essere controllata tramite l\'item \"%s\"</string>
     <string name="settings_ui_command_item_summary_off">La sitemap non può essere controllata da un Item</string>
@@ -134,6 +135,10 @@
     <string name="device_control">Controllo dispositivo Android</string>
     <string name="device_control_subtitle">Descrizione dell\'icona</string>
     <string name="device_control_hint">A seconda della versione di Android queste icone si trovano nel menu ottenuto premendo a lungo sul pulsante di accensione o accanto alle icone ad accesso rapido</string>
+    <string name="screensaver">Salvaschermo</string>
+    <string name="screensaver_item">Item Schermo</string>
+    <string name="screensaver_bright_screen">Schermo luminoso</string>
+    <string name="screensaver_error_loading_item">Errore nel caricare l\'item \"%s\"</string>
     <!-- App messages strings -->
     <string name="title_voice_widget">Comandi vocali</string>
     <string name="voice_command">Comando vocale</string>
@@ -303,8 +308,6 @@
     <string name="notification_channel_messages_default_severity">Predefinito</string>
     <string name="notification_channel_messages_default_severity_description">Notifiche inviate dal server senza gravità definita</string>
     <string name="notification_channel_group_messages">Messaggi</string>
-    <string name="notification_channel_severity_value">Gravità \'%1$s\'</string>
-    <string name="notification_channel_severity_value_description">Notifiche inviate dal server con gravità \'%1$s\'</string>
     <plurals name="summary_notification_text">
         <item quantity="one">%d nuova notifica</item>
         <item quantity="other">%d nuove notifiche</item>
@@ -313,7 +316,7 @@
     <string name="push_notification_status_http_error">Notifiche non disponibili: errore di connessione al server remoto: %s</string>
     <string name="push_notification_status_remote_no_cloud">Notifiche non disponibili: il server remoto non è un\'istanza cloud openHAB</string>
     <string name="push_notification_status">Stato</string>
-    <string name="push_notification_hint">Le notifiche sono controllate ad intervalli regolari, che sono gli stessi per \"Invia informazioni sul dispositivo al server\"</string>
+    <string name="push_notification_hint">Le notifiche sono intervistate secondo un programma regolare, che è lo stesso di \"Invia informazioni sul dispositivo al server\"</string>
     <plurals name="item_update_error_title">
         <item quantity="one">L’item %d non può essere aggiornato</item>
         <item quantity="other">Gli item %d non possono essere aggiornati</item>
@@ -565,6 +568,7 @@
     <string name="create_home_screen_widget_title">Crea widget</string>
     <string name="create_home_screen_widget_no_command">Mostra lo stato corrente</string>
     <string name="create_home_screen_widget_not_supported">Vai al menu widget nella schermata iniziale e crea un widget da lì</string>
+    <string name="analyse">Analizza</string>
     <!-- Data saver -->
     <string name="data_saver_title">Risparmio dati</string>
     <string name="data_saver_on">Gli elementi della Sitemap che richiedono grandi trasferimenti dati non vengono caricati</string>
@@ -696,7 +700,7 @@
     <string name="item_tag_equipment_alarmsystem">Sistemi di Allarme</string>
     <string name="item_tag_equipment_backdoor">Porta posteriore</string>
     <string name="item_tag_equipment_battery">Batteria</string>
-    <string name="item_tag_equipment_blinds">Tapparelle</string>
+    <string name="item_tag_equipment_blinds">Avvolgibili</string>
     <string name="item_tag_equipment_boiler">Caldaia</string>
     <string name="item_tag_equipment_camera">Telecamera</string>
     <string name="item_tag_equipment_car">Auto</string>

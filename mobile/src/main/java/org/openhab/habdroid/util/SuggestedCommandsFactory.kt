@@ -28,7 +28,7 @@ class SuggestedCommandsFactory(private val context: Context, private val showUnd
             return suggestedCommands
         }
 
-        for ((value, label) in widget.mappingsOrItemOptions) {
+        for ((value, _, label) in widget.mappingsOrItemOptions) {
             add(suggestedCommands, value, label)
         }
 
@@ -185,4 +185,3 @@ class SuggestedCommandsFactory(private val context: Context, private val showUnd
             INPUT_TYPE_DECIMAL_NUMBER or InputType.TYPE_NUMBER_FLAG_SIGNED
     }
 }
-

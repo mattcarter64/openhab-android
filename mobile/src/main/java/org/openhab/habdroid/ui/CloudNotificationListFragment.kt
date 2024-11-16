@@ -21,6 +21,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
@@ -28,14 +29,16 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.faltenreich.skeletonlayout.SkeletonLayout
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
 import org.openhab.habdroid.R
 import org.openhab.habdroid.core.connection.ConnectionFactory
+import org.openhab.habdroid.model.CloudMessage
 import org.openhab.habdroid.model.ServerConfiguration
-import org.openhab.habdroid.model.toCloudNotification
+import org.openhab.habdroid.model.toCloudMessage
 import org.openhab.habdroid.util.HttpClient
 import org.openhab.habdroid.util.getActiveServerId
 import org.openhab.habdroid.util.getConfiguredServerIds
@@ -50,6 +53,7 @@ import org.openhab.habdroid.util.map
  */
 class CloudNotificationListFragment : Fragment(), View.OnClickListener, SwipeRefreshLayout.OnRefreshListener {
     lateinit var recyclerView: RecyclerView
+    private lateinit var skeleton: SkeletonLayout
     private lateinit var swipeLayout: SwipeRefreshLayout
     private lateinit var retryButton: Button
     private lateinit var emptyView: View
@@ -71,6 +75,13 @@ class CloudNotificationListFragment : Fragment(), View.OnClickListener, SwipeRef
         emptyView = view.findViewById(android.R.id.empty)
         emptyMessage = view.findViewById(R.id.empty_message)
         emptyWatermark = view.findViewById(R.id.watermark)
+        skeleton = view.findViewById(R.id.skeletonLayout)
+        view.findViewById<LinearLayout>(R.id.skeletonList).apply {
+            repeat(10) {
+                addView(inflater.inflate(R.layout.notificationlist_item, null))
+            }
+        }
+        skeleton.showSkeleton()
 
         swipeLayout = view.findViewById(R.id.swipe_container)
         swipeLayout.setOnRefreshListener(this)
@@ -106,6 +117,7 @@ class CloudNotificationListFragment : Fragment(), View.OnClickListener, SwipeRef
 
     override fun onRefresh() {
         Log.d(TAG, "onRefresh()")
+        swipeLayout.isRefreshing = false
         loadNotifications(true)
     }
 
@@ -140,10 +152,11 @@ class CloudNotificationListFragment : Fragment(), View.OnClickListener, SwipeRef
         requestJob = activity.launch {
             try {
                 val response = conn.httpClient.get(url).asText().response
-                val items = JSONArray(response).map { obj -> obj.toCloudNotification() }
-                Log.d(TAG, "Notifications request success, got ${items.size} items")
-                loadOffset += items.size
-                adapter.addLoadedItems(items, items.size == PAGE_SIZE)
+                val allItems = JSONArray(response).map { obj -> obj.toCloudMessage() }
+                val filteredItems = allItems.filterIsInstance<CloudMessage.CloudNotification>()
+                Log.d(TAG, "Notifications request success, got ${allItems.size} items")
+                loadOffset += allItems.size
+                adapter.addLoadedItems(filteredItems, allItems.size == PAGE_SIZE)
                 handleInitialHighlight()
                 updateViewVisibility(loading = false, loadError = false)
             } catch (e: JSONException) {
@@ -172,11 +185,13 @@ class CloudNotificationListFragment : Fragment(), View.OnClickListener, SwipeRef
         val showEmpty = !loading && (adapter.itemCount == 0 || loadError)
         recyclerView.isVisible = !showEmpty
         emptyView.isVisible = showEmpty
-        swipeLayout.isRefreshing = loading
+        skeleton.isVisible = loading
         emptyMessage.setText(
-            if (loadError) R.string.notification_list_error else R.string.notification_list_empty)
+            if (loadError) R.string.notification_list_error else R.string.notification_list_empty
+        )
         emptyWatermark.setImageResource(
-            if (loadError) R.drawable.ic_connection_error else R.drawable.ic_no_notifications)
+            if (loadError) R.drawable.ic_connection_error else R.drawable.ic_no_notifications
+        )
         retryButton.isVisible = loadError
     }
 

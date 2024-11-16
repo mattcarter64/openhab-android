@@ -31,9 +31,9 @@ class WidgetDataSource() {
         private set
     var id: String? = null
         private set
-    var icon: String? = null
-        private set
     var link: String? = null
+        private set
+    var icon: String? = null
         private set
 
     val widgets: List<Widget> get() {
@@ -41,8 +41,13 @@ class WidgetDataSource() {
             .filter { w -> w.parentId == null }
             .map { w -> w.id }
             .toSet()
-        return allWidgets
-            .filter { w -> w.parentId == null || w.parentId in firstLevelWidgetIds }
+        val secondLevelWidgetIds = allWidgets
+            .filter { w -> w.parentId in firstLevelWidgetIds && w.type in ALLOWED_SECOND_LEVEL_PARENTS }
+            .map { w -> w.id }
+            .toSet()
+        return allWidgets.filter { w ->
+            w.parentId == null || w.parentId in firstLevelWidgetIds || w.parentId in secondLevelWidgetIds
+        }
     }
 
     fun setSourceNode(rootNode: Node?) {
@@ -66,8 +71,8 @@ class WidgetDataSource() {
             return
         }
         try {
-            jsonObject.getJSONArray("widgets").forEach {
-                    obj -> allWidgets.addAll(obj.collectWidgets(null))
+            jsonObject.getJSONArray("widgets").forEach { obj ->
+                allWidgets.addAll(obj.collectWidgets(null))
             }
             id = jsonObject.optStringOrNull("id")
             title = jsonObject.optString("title", id.orEmpty())
@@ -80,5 +85,6 @@ class WidgetDataSource() {
 
     companion object {
         private val TAG = WidgetDataSource::class.java.simpleName
+        private val ALLOWED_SECOND_LEVEL_PARENTS = setOf(Widget.Type.Buttongrid, Widget.Type.Frame)
     }
 }

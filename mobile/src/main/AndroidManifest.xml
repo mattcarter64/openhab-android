@@ -91,6 +91,10 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.preference.DayDreamPreferencesActivity"
+            android:exported="true" />
         <activity
             android:name=".ui.AboutActivity"
             android:label="@string/about_title"
@@ -272,6 +276,9 @@
         <receiver
             android:name=".background.CopyToClipboardReceiver"
             android:exported="false" />
+        <receiver
+            android:name=".core.NotificationHandlingReceiver"
+            android:exported="false" />
 
         <activity
             android:name=".background.NfcReceiveActivity"
@@ -320,6 +327,22 @@
             <intent-filter>
                 <action android:name="android.service.controls.ControlsProviderService" />
             </intent-filter>
+        </service>
+
+        <service
+            android:name=".ui.DayDream"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:icon="@drawable/ic_openhab_appicon_24dp"
+            android:configChanges="orientation|screenSize"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.dream"
+                android:resource="@xml/day_dream" />
         </service>
 
         <!-- Tiles -->

@@ -17,8 +17,13 @@ import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.runBlocking
-import org.openhab.habdroid.model.CloudNotification
+import org.openhab.habdroid.model.CloudMessage
+import org.openhab.habdroid.model.CloudNotificationAction
+import org.openhab.habdroid.model.CloudNotificationId
+import org.openhab.habdroid.model.toCloudNotificationAction
 import org.openhab.habdroid.model.toOH2IconResource
+import org.openhab.habdroid.util.map
+import org.openhab.habdroid.util.toJsonArrayOrNull
 
 class FcmMessageListenerService : FirebaseMessagingService() {
     private lateinit var notifHelper: NotificationHelper
@@ -38,38 +43,41 @@ class FcmMessageListenerService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
         Log.d(TAG, "onMessageReceived with data $data")
-        val messageType = data["type"] ?: return
-        val notificationId = data["notificationId"]?.toInt() ?: 1
 
-        when (messageType) {
+        val cloudMessage: CloudMessage? = when (data["type"]) {
             "notification" -> {
-                val cloudNotification = CloudNotification(
-                    data["persistedId"].orEmpty(),
-                    data["message"].orEmpty(),
+                val actions = data["actions"]
+                    ?.toJsonArrayOrNull()
+                    ?.map { it.toCloudNotificationAction() }
+                    ?.filterNotNull()
+                CloudMessage.CloudNotification(
+                    id = CloudNotificationId(data["persistedId"].orEmpty(), data["reference-id"]),
+                    title = data["title"].orEmpty(),
+                    message = data["message"].orEmpty(),
                     // Older versions of openhab-cloud didn't send the notification generation
                     // timestamp, so use the (undocumented) google.sent_time as a time reference
                     // in that case. If that also isn't present, don't show time at all.
-                    data["timestamp"]?.toLong() ?: message.sentTime,
-                    data["icon"].toOH2IconResource(),
-                    data["severity"]
+                    createdTimestamp = data["timestamp"]?.toLong() ?: message.sentTime,
+                    icon = data["icon"].toOH2IconResource(),
+                    tag = data["tag"],
+                    actions = actions,
+                    onClickAction = data["on-click"]?.let { CloudNotificationAction("", it) },
+                    mediaAttachmentUrl = data["media-attachment-url"]
                 )
+            }
 
-                runBlocking {
-                    val context = this@FcmMessageListenerService
-                    notifHelper.showNotification(
-                        notificationId,
-                        cloudNotification,
-                        FcmRegistrationWorker.createHideNotificationIntent(context, notificationId),
-                        FcmRegistrationWorker.createHideNotificationIntent(
-                            context,
-                            NotificationHelper.SUMMARY_NOTIFICATION_ID
-                        )
-                    )
-                }
-            }
             "hideNotification" -> {
-                notifHelper.cancelNotification(notificationId)
+                CloudMessage.CloudHideNotificationRequest(
+                    id = CloudNotificationId(data["persistedId"].orEmpty(), data["reference-id"]),
+                    tag = data["tag"]
+                )
             }
+
+            else -> null
+        }
+
+        runBlocking {
+            cloudMessage?.let { notifHelper.handleNewCloudMessage(it) }
         }
     }
 

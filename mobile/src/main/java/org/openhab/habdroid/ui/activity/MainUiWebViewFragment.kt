@@ -16,6 +16,7 @@ package org.openhab.habdroid.ui.activity
 import okhttp3.HttpUrl
 import org.openhab.habdroid.R
 import org.openhab.habdroid.ui.MainActivity
+import org.openhab.habdroid.util.loadActiveServerConfig
 
 class MainUiWebViewFragment : AbstractWebViewFragment() {
     override val titleRes = R.string.mainmenu_openhab_main_ui
@@ -27,11 +28,18 @@ class MainUiWebViewFragment : AbstractWebViewFragment() {
     override val shortcutAction = MainActivity.ACTION_MAIN_UI_SELECTED
 
     override fun modifyUrl(orig: HttpUrl): HttpUrl {
+        var modified = orig
         if (orig.host == "myopenhab.org") {
-            return orig.newBuilder()
+            modified = modified.newBuilder()
                 .host("home.myopenhab.org")
                 .build()
         }
-        return orig
+        val mainUiStartPage = context?.loadActiveServerConfig()?.mainUiStartPage
+        if (!mainUiStartPage.isNullOrEmpty()) {
+            modified = modified.newBuilder()
+                .encodedPath(mainUiStartPage)
+                .build()
+        }
+        return modified
     }
 }

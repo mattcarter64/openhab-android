@@ -76,6 +76,7 @@
     <string name="settings_no_default_sitemap">Intet standard Sitemap er valgt</string>
     <!-- %1$s: Default Sitemap label -->
     <string name="settings_current_default_sitemap">Nåværende standard Sitemap: %1$s</string>
+    <string name="settings_main_ui_start_page">Main UI startside</string>
     <string name="settings_ui_command_item">UI kommando Item</string>
     <string name="settings_ui_command_item_summary_on">Sitemap kan kontrolleres via Item \"%s\"</string>
     <string name="settings_ui_command_item_summary_off">SItemap kan ikke kontrolleres av et Item</string>
@@ -136,6 +137,10 @@
     <string name="device_control">Android enhetskontroll</string>
     <string name="device_control_subtitle">Beskrivelse i fliser</string>
     <string name="device_control_hint">Avhengig av din Android-versjon er disse flisene å finne i langt-trykk menyen til av/på bryteren eller ved siden av hurtigflisene</string>
+    <string name="screensaver">Skjermsparer</string>
+    <string name="screensaver_item">Vist Item</string>
+    <string name="screensaver_bright_screen">Lys skjerm</string>
+    <string name="screensaver_error_loading_item">Feil ved lasting av Item \"%s\"</string>
     <!-- App messages strings -->
     <string name="title_voice_widget">Talekommandoer</string>
     <string name="voice_command">Talekommando</string>
@@ -182,6 +187,7 @@
     <string name="webview_ssl">For tiden støtter dette programmet ikke selvsignert SSL-sertifikater for Webview widgets</string>
     <string name="webview_snackbar_permissions_missing">Siden krever ytterligere tillatelser for å fungere ordentlig</string>
     <!-- The following strings are referenced via reflection in Context.getHumanReadableErrorMessage -->
+    <string name="error_http_code_401" tools:keep="@string/error_http_code_401">Autentisering mislyktes. Kontroller konfigurert brukernavn og passord i henhold til det angitte SSL-klientsertifikatet (HTTP kode %d). Kontroller at Basic Authentication er aktivert på serveren.</string>
     <string name="error_http_code_404" tools:keep="@string/error_http_code_404">Ikke funnet (HTTP kode %d)</string>
     <string name="error_http_code_414" tools:keep="@string/error_http_code_414">URL\'en er for lang. Bruk IP-adresse eller en kortere URL (HTTP kode %d).</string>
     <string name="error_http_code_426" tools:keep="@string/error_http_code_426">HTTPS er påkrevd. Vennligst endre URL\'en (HTTP kode %d).</string>
@@ -305,8 +311,6 @@
     <string name="notification_channel_messages_default_severity">Standard</string>
     <string name="notification_channel_messages_default_severity_description">Varsler sendt av serveren uten en definert alvorlighetsgrad</string>
     <string name="notification_channel_group_messages">Meldinger</string>
-    <string name="notification_channel_severity_value">Alvorlighetsgrad \'%1$s\'</string>
-    <string name="notification_channel_severity_value_description">Varsler sendt av serveren med alvorlighetsgrad \'%1$s\'</string>
     <plurals name="summary_notification_text">
         <item quantity="one">%d nytt varsel</item>
         <item quantity="other">%d nye varsler</item>
@@ -567,6 +571,7 @@
     <string name="create_home_screen_widget_title">Lag widget</string>
     <string name="create_home_screen_widget_no_command">Vis gjeldende tilstand</string>
     <string name="create_home_screen_widget_not_supported">Vennligst gå til widget-menyen på startskjermen og opprett en widget derfra</string>
+    <string name="analyse">Analyser</string>
     <!-- Data saver -->
     <string name="data_saver_title">Datasparing</string>
     <string name="data_saver_on">Sitemap-elementer som kan kreve større dataoverføringer blir ikke lastet</string>

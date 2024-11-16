@@ -28,6 +28,7 @@ import org.openhab.habdroid.util.getChartScalingFactor
 import org.openhab.habdroid.util.map
 import org.openhab.habdroid.util.optBooleanOrNull
 import org.openhab.habdroid.util.optFloatOrNull
+import org.openhab.habdroid.util.optIntOrNull
 import org.openhab.habdroid.util.optStringOrFallback
 import org.openhab.habdroid.util.optStringOrNull
 import org.openhab.habdroid.util.shouldRequestHighResChart
@@ -54,19 +55,25 @@ data class Widget(
     private val rawMinValue: Float?,
     private val rawMaxValue: Float?,
     private val rawStep: Float?,
+    val row: Int?,
+    val column: Int?,
+    val command: String?,
+    val releaseCommand: String?,
+    val stateless: Boolean?,
     val period: String,
     val service: String,
     val legend: Boolean?,
     val forceAsItem: Boolean,
     val yAxisDecimalPattern: String?,
     val switchSupport: Boolean,
+    val releaseOnly: Boolean?,
     val height: Int,
     val visibility: Boolean,
     val rawInputHint: InputTypeHint?
 ) : Parcelable {
     val label get() = rawLabel.split("[", "]")[0].trim()
     val stateFromLabel: String? get() {
-        val value = rawLabel.split("[", "]").getOrNull(1)?.trim()
+        val value = Widget.stateLabelRegex.find(rawLabel)?.groupValues?.getOrNull(1)
         val optionLabel = mappingsOrItemOptions.find { it.value == value }?.label
         return optionLabel ?: value
     }
@@ -121,6 +128,7 @@ data class Widget(
         Webview,
         Input,
         Buttongrid,
+        Button,
         Unknown
     }
 
@@ -155,7 +163,10 @@ data class Widget(
 
         val chartUrl = Uri.Builder()
             .path("chart")
-            .appendQueryParameter(if (item.type === Item.Type.Group && !forceAsItem) "groups" else "items", item.name)
+            .appendQueryParameter(
+                if (item.type === Item.Type.Group && !forceAsItem) "groups" else "items",
+                item.name
+            )
             .appendQueryParameter("dpi", actualDensity.toInt() / resDivider)
             .appendQueryParameter("period", forcedPeriod)
 
@@ -203,11 +214,17 @@ data class Widget(
                 rawMinValue = source.rawMinValue,
                 rawMaxValue = source.rawMaxValue,
                 rawStep = source.rawStep,
+                row = source.row,
+                column = source.column,
+                command = source.command,
+                releaseCommand = source.releaseCommand,
+                stateless = source.stateless,
                 period = source.period,
                 service = source.service,
                 legend = source.legend,
                 forceAsItem = source.forceAsItem,
                 switchSupport = source.switchSupport,
+                releaseOnly = source.releaseOnly,
                 yAxisDecimalPattern = source.yAxisDecimalPattern,
                 height = source.height,
                 visibility = eventPayload.optBoolean("visibility", source.visibility),
@@ -216,6 +233,7 @@ data class Widget(
         }
 
         internal fun sanitizeRefreshRate(refresh: Int) = if (refresh in 1..99) 100 else refresh
+
         internal fun sanitizePeriod(period: String?) = if (period.isNullOrEmpty()) "D" else period
 
         internal fun determineWidgetState(state: String?, item: Item?): ParsedState? = when {
@@ -225,6 +243,8 @@ data class Widget(
                 state.toParsedState(item.state?.asNumber?.format)
             else -> state.toParsedState()
         }
+
+        internal val stateLabelRegex = Regex("\\[(.*)\\]$")
     }
 }
 
@@ -254,6 +274,7 @@ fun String?.toLabelSource(): Widget.LabelSource = when (this) {
     else -> Widget.LabelSource.Unknown
 }
 
+// This function is only used on openHAB versions with XML API, which is openHAB 1.x
 fun Node.collectWidgets(parent: Widget?): List<Widget> {
     var item: Item? = null
     var linkedPage: LinkedPage? = null
@@ -308,7 +329,7 @@ fun Node.collectWidgets(parent: Widget?): List<Widget> {
                         "label" -> mappingLabel = childNode.textContent
                     }
                 }
-                mappings.add(LabeledValue(mappingCommand, mappingLabel, null, 0, 0))
+                mappings.add(LabeledValue(mappingCommand, null, mappingLabel, null, 0, 0))
             }
             else -> {}
         }
@@ -336,14 +357,24 @@ fun Node.collectWidgets(parent: Widget?): List<Widget> {
         rawMinValue = minValue,
         rawMaxValue = maxValue,
         rawStep = step,
+        // row, column, command, releaseCommand, stateless were added in openHAB 4.2
+        // so no support for openHAB 1 required.
+        row = null,
+        column = null,
+        command = null,
+        releaseCommand = null,
+        stateless = null,
         period = Widget.sanitizePeriod(period),
         service = service,
         legend = null,
-        forceAsItem = false, // forceAsItem was added in openHAB 3, so no support for openHAB 1 required.
+        // forceAsItem was added in openHAB 3, so no support for openHAB 1 required.
+        forceAsItem = false,
         yAxisDecimalPattern = null,
         switchSupport = switchSupport,
+        releaseOnly = null,
         height = height,
-        rawInputHint = null, // inputHint was added in openHAB 4, so no support for openHAB 1 required.
+        // inputHint was added in openHAB 4, so no support for openHAB 1 required.
+        rawInputHint = null,
         visibility = true
     )
     val childWidgets = childWidgetNodes.map { node -> node.collectWidgets(widget) }.flatten()
@@ -384,12 +415,18 @@ fun JSONObject.collectWidgets(parent: Widget?): List<Widget> {
         rawMinValue = optFloatOrNull("minValue"),
         rawMaxValue = optFloatOrNull("maxValue"),
         rawStep = optFloatOrNull("step"),
+        row = optIntOrNull("row"),
+        column = optIntOrNull("column"),
+        command = optStringOrNull("command"),
+        releaseCommand = optStringOrNull("releaseCommand"),
+        stateless = optBooleanOrNull("stateless"),
         period = Widget.sanitizePeriod(optString("period")),
         service = optString("service", ""),
         legend = optBooleanOrNull("legend"),
         forceAsItem = optBoolean("forceAsItem", false),
         yAxisDecimalPattern = optString("yAxisDecimalPattern"),
         switchSupport = optBoolean("switchSupport", false),
+        releaseOnly = optBooleanOrNull("releaseOnly"),
         height = optInt("height"),
         rawInputHint = optStringOrNull("inputHint").toInputHint(),
         visibility = optBoolean("visibility", true)

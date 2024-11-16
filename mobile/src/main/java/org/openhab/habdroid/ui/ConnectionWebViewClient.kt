@@ -46,7 +46,6 @@ import org.openhab.habdroid.util.openInBrowser
 open class ConnectionWebViewClient(
     private val connection: Connection
 ) : WebViewClient() {
-
     override fun onReceivedHttpAuthRequest(view: WebView, handler: HttpAuthHandler, host: String, realm: String) {
         handler.proceed(connection.username, connection.password)
     }
@@ -57,6 +56,7 @@ open class ConnectionWebViewClient(
     }
 
     // This is called on older Android versions
+    @Deprecated("Deprecated in Java")
     override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
         if (url == EMPTY_PAGE || view.url == EMPTY_PAGE) {
             Log.d(TAG, "Either current or new page is '$EMPTY_PAGE'")

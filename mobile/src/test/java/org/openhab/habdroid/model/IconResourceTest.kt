@@ -13,14 +13,7 @@
 
 package org.openhab.habdroid.model
 
-import org.json.JSONException
-import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IconResourceTest {
@@ -74,6 +67,20 @@ class IconResourceTest {
         ).forEach {
             val urlForUnknownIcons = "icon/none?format=PNG&anyFormat=true&iconset=classic"
             testIconToUrl(it, urlForUnknownIcons)
+        }
+    }
+
+    @Test
+    fun testIsNoneIcon() {
+        mapOf(
+            "none" to true,
+            "oh:none" to true,
+            "oh:classic:none" to true,
+            "oh:foo:none" to true,
+            "f7:none" to false,
+            "lights" to false
+        ).forEach {
+            assertEquals("${it.key} failed", it.key.isNoneIcon(), it.value)
         }
     }
 

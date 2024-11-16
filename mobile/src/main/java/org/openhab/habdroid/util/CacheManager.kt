@@ -24,7 +24,9 @@ import java.io.IOException
 import java.io.InputStream
 import okhttp3.Cache
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.openhab.habdroid.model.IconFormat
+import org.openhab.habdroid.model.IconResource
 
 class CacheManager private constructor(appContext: Context) {
     val httpCache: Cache = Cache(File(appContext.cacheDir, "http"), (10 * 1024 * 1024).toLong())
@@ -53,12 +55,15 @@ class CacheManager private constructor(appContext: Context) {
     }
 
     private fun targetCache(url: HttpUrl): BitmapCache {
-        return if (url.pathSegments.firstOrNull() == "icon" && url.pathSegments[1].isNotEmpty()) {
+        return if (url.isIconUrl()) {
             iconBitmapCache
         } else {
             temporaryBitmapCache
         }
     }
+
+    private fun HttpUrl.isIconUrl() = host == IconResource.ICONIFY_API_URL ||
+        (pathSegments.firstOrNull() == "icon" && pathSegments[1].isNotEmpty())
 
     fun isBitmapCached(url: HttpUrl, @ColorInt fallbackColor: Int): Boolean {
         return getCachedBitmap(url, fallbackColor) != null
@@ -71,11 +76,11 @@ class CacheManager private constructor(appContext: Context) {
     }
 
     fun removeWidgetIcon(widgetId: Int) {
-        IconFormat.values().forEach { format -> getWidgetIconFile(widgetId, format).delete() }
+        IconFormat.entries.forEach { format -> getWidgetIconFile(widgetId, format).delete() }
     }
 
     fun getWidgetIconFormat(widgetId: Int): IconFormat? {
-        return IconFormat.values()
+        return IconFormat.entries
             .firstOrNull { format -> getWidgetIconFile(widgetId, format).exists() }
     }
 
@@ -87,14 +92,26 @@ class CacheManager private constructor(appContext: Context) {
 
     fun clearCache(alsoClearIcons: Boolean) {
         temporaryBitmapCache.evictAll()
-        try {
-            httpCache.evictAll()
-        } catch (ignored: IOException) {
-            // ignored
-        }
         if (alsoClearIcons) {
+            try {
+                httpCache.evictAll()
+            } catch (ignored: IOException) {
+                // ignored
+            }
             widgetIconDirectory?.listFiles()?.forEach { f -> f.delete() }
             iconBitmapCache.evictAll()
+        } else {
+            // Don't evict icons from httpCache
+            try {
+                val urlIterator = httpCache.urls()
+                while (urlIterator.hasNext()) {
+                    if (urlIterator.next().toHttpUrlOrNull()?.isIconUrl() == false) {
+                        urlIterator.remove()
+                    }
+                }
+            } catch (ignored: IOException) {
+                // ignored
+            }
         }
     }
 
@@ -118,6 +135,7 @@ class CacheManager private constructor(appContext: Context) {
     )
 
     companion object {
+        private val TAG = CacheManager::class.java.simpleName
         private var instance: CacheManager? = null
 
         fun getInstance(context: Context): CacheManager {

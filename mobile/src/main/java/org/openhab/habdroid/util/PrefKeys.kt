@@ -37,7 +37,9 @@ object PrefKeys {
     const val WIFI_SSID_PREFIX = "wifi_ssid_"
     const val RESTRICT_TO_SSID_PREFIX = "restrict_to_ssid_"
     const val FRONTAIL_URL_PREFIX = "frontail_url_"
+    const val MAIN_UI_START_PAGE_PREFIX = "main_ui_start_page_"
     const val CLEAR_DEFAULT_SITEMAP = "clear_default_sitemap"
+
     fun buildServerKey(id: Int, prefix: String) = "$prefix$id"
 
     const val START_PAGE = "start_page"
@@ -90,6 +92,9 @@ object PrefKeys {
     const val DRAWER_ENTRY_HABPANEL = "show_habpanel"
     const val DRAWER_ENTRY_NFC = "show_nfc"
     const val DRAWER_ENTRY_FRONTAIL = "show_frontail"
+
+    const val DAY_DREAM_ITEM = "daydream_item"
+    const val DAY_DREAM_BRIGHT_SCREEN = "daydream_bright_screen"
 
     /**
      * Application state flags
