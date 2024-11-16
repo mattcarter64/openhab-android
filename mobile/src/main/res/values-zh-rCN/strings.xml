@@ -296,8 +296,6 @@
     <string name="notification_channel_messages_default_severity">默认</string>
     <string name="notification_channel_messages_default_severity_description">服务器发送通知没有定义严重程度</string>
     <string name="notification_channel_group_messages">消息</string>
-    <string name="notification_channel_severity_value">严重性 \'%1$s\'</string>
-    <string name="notification_channel_severity_value_description">服务器发送严重程度为%1$s \' 的通知</string>
     <plurals name="summary_notification_text">
         <item quantity="other">%d 条新通知</item>
     </plurals>
@@ -305,7 +303,6 @@
     <string name="push_notification_status_http_error">通知不可用: 连接到远程服务器时出错: %s</string>
     <string name="push_notification_status_remote_no_cloud">通知不可用：远程服务器不是一个 openHAB云实例</string>
     <string name="push_notification_status">状态</string>
-    <string name="push_notification_hint">通知按正常计划安排，与“向服务器发送设备信息”相同。</string>
     <plurals name="item_update_error_title">
         <item quantity="other">无法更新 %d 个项目</item>
     </plurals>

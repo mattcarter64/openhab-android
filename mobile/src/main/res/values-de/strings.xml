@@ -76,6 +76,7 @@
     <string name="settings_no_default_sitemap">Keine Standard-Sitemap festgelegt</string>
     <!-- %1$s: Default Sitemap label -->
     <string name="settings_current_default_sitemap">Aktuelle Standard-Sitemap: %1$s</string>
+    <string name="settings_main_ui_start_page">Startseite Main UI</string>
     <string name="settings_ui_command_item">Item für UI-Befehle</string>
     <string name="settings_ui_command_item_summary_on">Sitemap kann über Item \"%s\" gesteuert werden</string>
     <string name="settings_ui_command_item_summary_off">Sitemap kann nicht über ein Item gesteuert werden</string>
@@ -136,6 +137,10 @@
     <string name="device_control">Android-Geräte-Steuerung</string>
     <string name="device_control_subtitle">Beschreibung in Kacheln</string>
     <string name="device_control_hint">Abhängig von Ihrer Android-Version befinden sich diese Kacheln im Menü der Power-Taste oder neben den Schnelleinstellungen</string>
+    <string name="screensaver">Bildschirmschoner</string>
+    <string name="screensaver_item">Angezeigtes Item</string>
+    <string name="screensaver_bright_screen">Heller Bildschirm</string>
+    <string name="screensaver_error_loading_item">Fehler beim Laden des Items \"%s\"</string>
     <!-- App messages strings -->
     <string name="title_voice_widget">Sprachbefehle</string>
     <string name="voice_command">Sprachbefehl</string>
@@ -306,8 +311,6 @@
     <string name="notification_channel_messages_default_severity">Standard</string>
     <string name="notification_channel_messages_default_severity_description">Vom Server gesendete Benachrichtigungen ohne definierte Wichtigkeit</string>
     <string name="notification_channel_group_messages">Nachrichten</string>
-    <string name="notification_channel_severity_value">Dringlichkeit \'%1$s\'</string>
-    <string name="notification_channel_severity_value_description">Vom Server gesendete Benachrichtigungen mit Wichtigkeit \'%1$s\'</string>
     <plurals name="summary_notification_text">
         <item quantity="one">%d neue Benachrichtigung</item>
         <item quantity="other">%d neue Benachrichtigungen</item>
@@ -568,6 +571,7 @@
     <string name="create_home_screen_widget_title">Widget erstellen</string>
     <string name="create_home_screen_widget_no_command">Aktuellen Zustand anzeigen</string>
     <string name="create_home_screen_widget_not_supported">Bitte gehen Sie zum Widget-Menü auf Ihrem Startbildschirm und erstellen Sie von dort ein Widget</string>
+    <string name="analyse">Analysieren</string>
     <!-- Data saver -->
     <string name="data_saver_title">Datensparmodus</string>
     <string name="data_saver_on">Sitemap-Elemente, die größere Datenübertragungen erfordern, werden nicht geladen</string>

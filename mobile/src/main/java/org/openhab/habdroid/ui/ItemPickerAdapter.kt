@@ -29,7 +29,6 @@ import org.openhab.habdroid.util.determineDataUsagePolicy
 
 class ItemPickerAdapter(context: Context, private val itemClickListener: ItemClickListener?) :
     RecyclerView.Adapter<ItemPickerAdapter.ItemViewHolder>(), View.OnClickListener {
-
     private val filteredItems = ArrayList<Item>()
     private val allItems = ArrayList<Item>()
     private val inflater = LayoutInflater.from(context)
@@ -42,7 +41,7 @@ class ItemPickerAdapter(context: Context, private val itemClickListener: ItemCli
     fun setItems(items: List<Item>) {
         filteredItems.clear()
         filteredItems.addAll(items)
-        filteredItems.sortWith(Comparator { lhs, rhs -> lhs.name.compareTo(rhs.name, ignoreCase = true) })
+        filteredItems.sortWith { lhs, rhs -> lhs.name.compareTo(rhs.name, ignoreCase = true) }
         allItems.clear()
         allItems.addAll(filteredItems)
         notifyDataSetChanged()

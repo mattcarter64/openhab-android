@@ -104,6 +104,9 @@ class MainSettingsFragment : AbstractSettingsFragment(), ConnectionFactory.Updat
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.preferences)
+        // Populate server prefs here, so they don't get animated.
+        // Do it in onStart() again to update the list, e.g. after adding new servers.
+        populateServerPrefs()
 
         val addServerPref = getPreference("add_server")
         val sendDeviceInfoPref = getPreference(PrefKeys.SUBSCREEN_SEND_DEVICE_INFO)
@@ -140,7 +143,7 @@ class MainSettingsFragment : AbstractSettingsFragment(), ConnectionFactory.Updat
                 getString(R.string.settings_server_default_name, nextServerId)
             }
             val f = ServerEditorFragment.newInstance(
-                ServerConfiguration(nextServerId, nextName, null, null, null, null, null, false, null)
+                ServerConfiguration(nextServerId, nextName, null, null, null, null, null, false, null, null)
             )
             parentActivity.openSubScreen(f)
             true
@@ -226,10 +229,11 @@ class MainSettingsFragment : AbstractSettingsFragment(), ConnectionFactory.Updat
         launcherPref.setOnPreferenceChangeListener { pref, newValue ->
             val context = pref.context
             val launcherAlias = ComponentName(context, "${context.packageName}.ui.LauncherActivityAlias")
-            val newState = if (newValue as Boolean)
+            val newState = if (newValue as Boolean) {
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-            else
+            } else {
                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            }
             context.packageManager.setComponentEnabledSetting(launcherAlias, newState, PackageManager.DONT_KILL_APP)
             true
         }

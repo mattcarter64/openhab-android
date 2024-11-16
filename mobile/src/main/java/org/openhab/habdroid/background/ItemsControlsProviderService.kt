@@ -14,6 +14,7 @@
 package org.openhab.habdroid.background
 
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -36,11 +37,8 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.jdk9.flowPublish
 import kotlinx.coroutines.launch
-import org.json.JSONException
-import org.json.JSONObject
 import org.openhab.habdroid.R
 import org.openhab.habdroid.core.connection.Connection
 import org.openhab.habdroid.core.connection.ConnectionFactory
@@ -82,41 +80,14 @@ class ItemsControlsProviderService : ControlsProviderService() {
             .mapNotNull { factory.maybeCreateControl(it.value) }
             .forEach { control -> send(control) }
 
-        val eventSubscription = connection.httpClient.makeSse(
-            // Support for both the "openhab" and the older "smarthome" root topic by using a wildcard
-            connection.httpClient.buildUrl("rest/events?topics=*/items/*/statechanged")
-        )
-
-        try {
-            while (isActive) {
-                try {
-                    val event = JSONObject(eventSubscription.getNextEvent())
-                    if (event.optString("type") == "ALIVE") {
-                        Log.d(TAG, "Got ALIVE event")
-                        continue
-                    }
-                    val topic = event.getString("topic")
-                    val topicPath = topic.split('/')
-                    // Possible formats:
-                    // - openhab/items/<item>/statechanged
-                    // - openhab/items/<group item>/<item>/statechanged
-                    // When an update for a group is sent, there's also one for the individual item.
-                    // Therefore always take the element on index two.
-                    if (topicPath.size !in 4..5) {
-                        throw JSONException("Unexpected topic path $topic")
-                    }
-                    val item = allItems[topicPath[2]]
-                    if (item != null) {
-                        val payload = JSONObject(event.getString("payload"))
-                        val newItem = item.copy(state = payload.getString("value").toParsedState())
-                        factory.maybeCreateControl(newItem)?.let { control -> send(control) }
-                    }
-                } catch (e: JSONException) {
-                    Log.e(TAG, "Failed parsing JSON of state change event", e)
+        ItemClient.listenForItemChange(this, connection, "*") { topicPath, payload ->
+            val item = allItems[topicPath[2]]
+            if (item != null) {
+                val newItem = item.copy(state = payload.getString("value").toParsedState())
+                launch {
+                    factory.maybeCreateControl(newItem)?.let { control -> send(control) }
                 }
             }
-        } finally {
-            eventSubscription.cancel()
         }
     }
 
@@ -149,7 +120,13 @@ class ItemsControlsProviderService : ControlsProviderService() {
         }
         val state = when (action) {
             is BooleanAction -> {
-                val item = ItemClient.loadItem(connection, itemName) ?: return ControlAction.RESPONSE_FAIL
+                val item = try {
+                    ItemClient.loadItem(connection, itemName)
+                } catch (e: HttpClient.HttpException) {
+                    Log.e(TAG, "Could not determine item type for boolean action", e)
+                    null
+                } ?: return ControlAction.RESPONSE_FAIL
+
                 if (item.isOfTypeOrGroupType(Item.Type.Player)) {
                     if (action.newState) "PLAY" else "PAUSE"
                 } else {
@@ -185,7 +162,7 @@ class ItemsControlsProviderService : ControlsProviderService() {
         private val serverName: String
         private val primaryServerId: Int
         private val subtitleMode: DeviceControlSubtitleMode
-        private val authRequired: Boolean
+        private val prefsAuthRequired: Boolean
 
         init {
             val prefs = context.getPrefs()
@@ -194,7 +171,7 @@ class ItemsControlsProviderService : ControlsProviderService() {
                 ?.name
                 .orDefaultIfEmpty(context.getString(R.string.app_name))
             subtitleMode = prefs.getDeviceControlSubtitle(context)
-            authRequired = prefs.getBoolean(PrefKeys.DEVICE_CONTROL_AUTH_REQUIRED, true)
+            prefsAuthRequired = prefs.getBoolean(PrefKeys.DEVICE_CONTROL_AUTH_REQUIRED, true)
         }
 
         fun maybeCreateControl(item: Item): Control? {
@@ -239,6 +216,16 @@ class ItemsControlsProviderService : ControlsProviderService() {
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // Enforce authentication when the tile only opens MainActivity,
+                // which cannot be displayed on a locked screen.
+                val authRequired = if (
+                    controlTemplate.templateType == ControlTemplate.TYPE_NO_TEMPLATE &&
+                    intent.component == ComponentName(context, MainActivity::class.java)
+                ) {
+                    true
+                } else {
+                    prefsAuthRequired
+                }
                 statefulControl.setAuthRequired(authRequired)
             }
 
@@ -311,11 +298,12 @@ class ItemsControlsProviderService : ControlsProviderService() {
                     item.name,
                     ControlButton(item.state?.asBoolean ?: false, context.getString(R.string.nfc_action_toggle))
                 )
-                item.isOfTypeOrGroupType(Item.Type.Dimmer) || item.isOfTypeOrGroupType(Item.Type.Color) -> ToggleRangeTemplate(
-                    "${item.name}_toggle",
-                    ControlButton(item.state?.asBoolean ?: false, context.getString(R.string.nfc_action_toggle)),
-                    createRangeTemplate(item, "%.0f%%")
-                )
+                item.isOfTypeOrGroupType(Item.Type.Dimmer) || item.isOfTypeOrGroupType(Item.Type.Color) ->
+                    ToggleRangeTemplate(
+                        "${item.name}_toggle",
+                        ControlButton(item.state?.asBoolean ?: false, context.getString(R.string.nfc_action_toggle)),
+                        createRangeTemplate(item, "%.0f%%")
+                    )
                 item.isOfTypeOrGroupType(Item.Type.Rollershutter) -> createRangeTemplate(item, "%.0f%%")
                 item.isOfTypeOrGroupType(Item.Type.Number) -> createRangeTemplate(
                     item,
@@ -333,11 +321,7 @@ class ItemsControlsProviderService : ControlsProviderService() {
             val currentValue = item.state?.asNumber?.value ?: 0F
             val minimum = min(currentValue, item.minimum ?: 0F)
             val maximum = max(currentValue, item.maximum ?: 100F)
-            return RangeTemplate(
-                item.name, minimum, maximum,
-                currentValue, item.step ?: 1F,
-                format
-            )
+            return RangeTemplate(item.name, minimum, maximum, currentValue, item.step ?: 1F, format)
         }
 
         private fun getItemTagLabel(item: Item, type: Item.Tag): String? {
@@ -452,6 +436,9 @@ fun Item.getDeviceType() = when (category?.lowercase()?.substringAfterLast(':'))
         isOfTypeOrGroupType(Item.Type.Contact) -> DeviceTypes.TYPE_WINDOW
         isOfTypeOrGroupType(Item.Type.Player) -> DeviceTypes.TYPE_TV
         isOfTypeOrGroupType(Item.Type.Switch) -> DeviceTypes.TYPE_GENERIC_ON_OFF
+        isOfTypeOrGroupType(Item.Type.Dimmer) -> DeviceTypes.TYPE_LIGHT
+        isOfTypeOrGroupType(Item.Type.Color) -> DeviceTypes.TYPE_LIGHT
+        isOfTypeOrGroupType(Item.Type.Image) -> DeviceTypes.TYPE_CAMERA
 
         else -> DeviceTypes.TYPE_UNKNOWN
     }

@@ -28,7 +28,6 @@ import org.openhab.habdroid.util.appendQueryParameter
 import org.openhab.habdroid.util.getIconFormat
 import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.getStringOrNull
-import kotlin.text.replace
 
 @Parcelize
 data class IconResource internal constructor(
@@ -71,6 +70,7 @@ data class IconResource internal constructor(
         when (iconSource) {
             "material" -> {
                 iconSource = "iconify"
+                iconName = iconName.replace("_", "-")
                 iconName = "$iconSet-$iconName"
                 iconSet = "ic"
             }
@@ -86,7 +86,7 @@ data class IconResource internal constructor(
         when (iconSource) {
             "if", "iconify" -> {
                 builder.scheme("https")
-                    .authority("api.iconify.design")
+                    .authority(ICONIFY_API_URL)
                     .path(iconSet)
                     .appendPath("$iconName.svg")
                     .appendQueryParameter("height", desiredSizePixels.toString())
@@ -104,10 +104,10 @@ data class IconResource internal constructor(
                 }
 
                 builder.path("icon")
-                       .appendPath(iconName)
-                       .appendQueryParameter("format", suffix)
-                       .appendQueryParameter("anyFormat", true)
-                       .appendQueryParameter("iconset", iconSet)
+                    .appendPath(iconName)
+                    .appendQueryParameter("format", suffix)
+                    .appendQueryParameter("anyFormat", true)
+                    .appendQueryParameter("iconset", iconSet)
 
                 if (customState.isNotEmpty() && includeState) {
                     builder.appendQueryParameter("state", customState)
@@ -120,6 +120,10 @@ data class IconResource internal constructor(
 
     fun withCustomState(state: String): IconResource {
         return IconResource(icon, isOh2, state)
+    }
+
+    companion object {
+        public const val ICONIFY_API_URL = "api.iconify.design"
     }
 }
 
@@ -150,12 +154,15 @@ fun SharedPreferences.Editor.putIconResource(key: String, icon: IconResource?): 
     return this
 }
 
+@VisibleForTesting
+fun String.isNoneIcon() = "(oh:([a-z]+:)?)?none".toRegex().matches(this)
+
 fun String?.toOH1IconResource(): IconResource? {
-    return if (isNullOrEmpty() || this == "none") null else IconResource(this, false, "")
+    return if (isNullOrEmpty() || isNoneIcon()) null else IconResource(this, false, "")
 }
 
 fun String?.toOH2IconResource(): IconResource? {
-    return if (isNullOrEmpty() || this == "none") null else IconResource(this, true, "")
+    return if (isNullOrEmpty() || isNoneIcon()) null else IconResource(this, true, "")
 }
 
 internal fun String?.toOH2WidgetIconResource(
@@ -164,7 +171,7 @@ internal fun String?.toOH2WidgetIconResource(
     hasMappings: Boolean,
     useState: Boolean
 ): IconResource? {
-    if (isNullOrEmpty() || this == "none") {
+    if (isNullOrEmpty() || isNoneIcon()) {
         return null
     }
 
@@ -173,7 +180,7 @@ internal fun String?.toOH2WidgetIconResource(
         // For NULL states, we send 'null' as state when fetching the icon (BasicUI set a predecent for doing so)
         item.state == null -> "null"
         // Number items need to follow the format "<value>" or "<value> <unit>"
-        item.isOfTypeOrGroupType(Item.Type.Number) || item.isOfTypeOrGroupType(Item.Type.NumberWithDimension)-> {
+        item.isOfTypeOrGroupType(Item.Type.Number) || item.isOfTypeOrGroupType(Item.Type.NumberWithDimension) -> {
             item.state.asNumber?.let { numberState ->
                 val unitSuffix = numberState.unit?.let { " $it" } ?: ""
                 "${numberState.formatValue()}$unitSuffix"

@@ -11,7 +11,7 @@ source: https://github.com/openhab/openhab-android/blob/main/docs/USAGE.md
 # Android App
 
 The openHAB Android application is a native client for openHAB, compatible with phones and tablets.
-The app follows the basic principles of the other openHAB UIs, like Basic UI, and presents your predefined openHAB [sitemap(s)](https://www.openhab.org/docs/configuration/sitemaps.html) and other UIs.
+The app follows the basic principles of the other openHAB UIs, like Basic UI, and presents your predefined openHAB [sitemap(s)](https://www.openhab.org/docs/configuration/sitemaps.html) and other UIs, like Main UI.
 
 <a href="https://play.google.com/store/apps/details?id=org.openhab.habdroid">
   <img alt="Get it on Google Play" src="images/en_badge_web_generic.png" width="240px">
@@ -55,7 +55,7 @@ There are a number of strategies available to provide [secure remote access]({{b
 * [Send device information to openHAB](#send-device-information-to-openhab), like next alarm clock time or call state
 * [Supports wall mounted tablets](#permanent-deployment)
 * [Tasker](https://play.google.com/store/apps/details?id=net.dinglisch.android.taskerm) action plugin included
-* [Android Quick Access Device Controls](#quick-access-device-controls)
+* [Android Device Controls](#device-controls)
 
 ### Permanent Deployment
 
@@ -323,18 +323,26 @@ In case of an error the plugin returns an error code.
 | 11         | The app couldn't establish a connection                                                                                                                                                                    |
 | > 1000     | A connection was established, but an error occurred. The error code is 1000 + the HTTP code, e.g. 1401 means [Unauthenticated](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_client_errors). |
 
-### Quick Access Device Controls
+### Device Controls
 
-openHAB supports the device controls introduced in Android 11: https://www.android.com/intl/en_US/android-11/#a11-device-controls-article
+<img src="images/device-control.png" alt="Device Controls" width=200px>
+
+openHAB supports the device controls introduced in Android 11: https://developer.android.com/develop/ui/views/device-control
 When using a [semantic model](https://www.openhab.org/docs/tutorial/model.html#semantic-model) the location and/or equipment name can be shown in the tiles.
+The icon in the tiles is based on the semantic class of the Item.
 
 You can configure the page that is opened when you long-press a tile.
-Create a new "custom namespace" metadata on an Item with the name `link_to_more` and as `value` the link without the host to a Sitemap (e.g. `/basicui/app?w=0202&sitemap=demo`) or MainUI (e.g. `/locations`).
+Create an "Android App: Device Controls" metadata on an Item with a link without the host to a Sitemap (e.g. `/basicui/app?w=0202&sitemap=demo`) or MainUI (e.g. `/locations`).
 
 ### UI command Item
 
-Similar to the [UI command Item in Main UI](https://next.openhab.org/docs/mainui/about.html#ui-command-item) you can use an Item to control the Sitemaps.
-All commands except `popup:` are supported by the app.
+Similar to the [UI command Item in Main UI](https://next.openhab.org/docs/mainui/about.html#ui-command-item) you can use a `String` Item to control the Sitemaps.
+Whenever the configured Item receives a command, the app reacts on this command.
+Examples:
+- Sending the command `navigate:/basicui/app?w=0003&sitemap=foo` opens a subpage of the Sitemap `foo`. To get this URL, open the Sitemap in Basic UI and copy the URL after the hostname.
+- Sending the command `notification:Hi there` shows a popup with this text.
+
+All commands except the `popup:` command are supported by the app.
 
 ## Multi server support
 
@@ -343,7 +351,7 @@ The active server is used for foreground operations, e.g. display the Sitemaps, 
 The primary server is used for all background operations and can be changed in the settings.
 
 Features that support multiple servers:
-* Display Sitemaps and HABPanel
+* Display Sitemaps, Main UI and HABPanel
 * Voice commands launched from in-app (sent to active server) and from widgets (sent to primary server)
 * Show a list of recent notifications
 * Sitemap shortcuts on the home screen

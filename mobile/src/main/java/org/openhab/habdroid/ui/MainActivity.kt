@@ -50,6 +50,7 @@ import androidx.annotation.StringRes
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import androidx.core.content.edit
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.graphics.drawable.toDrawable
@@ -70,17 +71,15 @@ import java.nio.charset.Charset
 import java.util.concurrent.CancellationException
 import javax.jmdns.ServiceInfo
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import org.json.JSONException
-import org.json.JSONObject
 import org.openhab.habdroid.BuildConfig
 import org.openhab.habdroid.R
 import org.openhab.habdroid.background.BackgroundTasksManager
@@ -88,6 +87,7 @@ import org.openhab.habdroid.background.EventListenerService
 import org.openhab.habdroid.background.NotificationUpdateObserver
 import org.openhab.habdroid.background.PeriodicItemUpdateWorker
 import org.openhab.habdroid.core.CloudMessagingHelper
+import org.openhab.habdroid.core.NotificationHelper
 import org.openhab.habdroid.core.OpenHabApplication
 import org.openhab.habdroid.core.UpdateBroadcastReceiver
 import org.openhab.habdroid.core.connection.CloudConnection
@@ -98,6 +98,7 @@ import org.openhab.habdroid.core.connection.DemoConnection
 import org.openhab.habdroid.core.connection.NetworkNotAvailableException
 import org.openhab.habdroid.core.connection.NoUrlInformationException
 import org.openhab.habdroid.core.connection.WrongWifiException
+import org.openhab.habdroid.model.CloudNotificationId
 import org.openhab.habdroid.model.LinkedPage
 import org.openhab.habdroid.model.ServerConfiguration
 import org.openhab.habdroid.model.ServerProperties
@@ -116,6 +117,7 @@ import org.openhab.habdroid.util.CrashReportingHelper
 import org.openhab.habdroid.util.HttpClient
 import org.openhab.habdroid.util.IconBackground
 import org.openhab.habdroid.util.ImageConversionPolicy
+import org.openhab.habdroid.util.ItemClient
 import org.openhab.habdroid.util.PendingIntent_Immutable
 import org.openhab.habdroid.util.PrefKeys
 import org.openhab.habdroid.util.ScreenLockMode
@@ -141,6 +143,7 @@ import org.openhab.habdroid.util.isDebugModeEnabled
 import org.openhab.habdroid.util.isEventListenerEnabled
 import org.openhab.habdroid.util.isScreenTimerDisabled
 import org.openhab.habdroid.util.openInAppStore
+import org.openhab.habdroid.util.orDefaultIfEmpty
 import org.openhab.habdroid.util.parcelable
 import org.openhab.habdroid.util.putActiveServerId
 import org.openhab.habdroid.util.resolveThemedColor
@@ -170,6 +173,7 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
         private set
     private var propsRequestJob: Job? = null
     private var retryJob: Job? = null
+    private var notificationPollingJob: Job? = null
     private var isStarted: Boolean = false
     private var shortcutManager: ShortcutManager? = null
     private val backgroundTasksManager = BackgroundTasksManager()
@@ -326,6 +330,18 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
             switchServerBasedOnWifi(switchToServer)
         }
         handlePendingAction()
+        startNotificationPolling()
+    }
+
+    private fun startNotificationPolling() {
+        notificationPollingJob?.cancel()
+        if (CloudMessagingHelper.needsPollingForNotifications(this)) {
+            notificationPollingJob = launch {
+                CloudMessagingHelper.pollForNotifications(this@MainActivity)
+                delay(3.minutes)
+                startNotificationPolling()
+            }
+        }
     }
 
     public override fun onStop() {
@@ -339,6 +355,7 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
             sitemapSelectionDialog?.dismiss()
         }
         propsRequestJob?.cancel()
+        notificationPollingJob?.cancel()
     }
 
     override fun onResume() {
@@ -398,7 +415,8 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
             connection != null && SpeechRecognizer.isRecognitionAvailable(this)
         val debugItems = listOf(
             R.id.mainmenu_debug_crash,
-            R.id.mainmenu_debug_clear_mtm
+            R.id.mainmenu_debug_clear_mtm,
+            R.id.mainmenu_poll_notifications
         )
         debugItems.forEach {
             menu.findItem(it).isVisible = BuildConfig.DEBUG
@@ -437,21 +455,29 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
                 }
                 true
             }
+            R.id.mainmenu_poll_notifications -> {
+                if (CloudMessagingHelper.needsPollingForNotifications(this)) {
+                    launch {
+                        CloudMessagingHelper.pollForNotifications(this@MainActivity)
+                    }
+                }
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
 
-    public override fun onSaveInstanceState(savedInstanceState: Bundle) {
+    public override fun onSaveInstanceState(outState: Bundle) {
         CrashReportingHelper.d(TAG, "onSaveInstanceState()")
         isStarted = false
-        with(savedInstanceState) {
+        with(outState) {
             putParcelable(STATE_KEY_SERVER_PROPERTIES, serverProperties)
             putBoolean(STATE_KEY_SITEMAP_SELECTION_SHOWN, sitemapSelectionDialog?.isShowing == true)
             putString(STATE_KEY_CONTROLLER_NAME, controller.javaClass.canonicalName)
             putInt(STATE_KEY_CONNECTION_HASH, connection?.hashCode() ?: -1)
             controller.onSaveInstanceState(this)
         }
-        super.onSaveInstanceState(savedInstanceState)
+        super.onSaveInstanceState(outState)
     }
 
     private inner class MainOnBackPressedCallback : OnBackPressedCallback(true) {
@@ -461,11 +487,10 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
                 drawerLayout.isDrawerOpen(findViewById<NavigationView>(R.id.left_drawer)) -> drawerLayout.closeDrawers()
                 controller.canGoBack() -> controller.goBack()
                 isFullscreenEnabled -> when {
-                    lastSnackbar?.isShown != true ->
-                        showSnackbar(
-                            SNACKBAR_TAG_PRESS_AGAIN_EXIT,
-                            R.string.press_back_to_exit
-                        )
+                    lastSnackbar?.isShown != true -> showSnackbar(
+                        SNACKBAR_TAG_PRESS_AGAIN_EXIT,
+                        R.string.press_back_to_exit
+                    )
                     lastSnackbar?.view?.tag?.toString() == SNACKBAR_TAG_PRESS_AGAIN_EXIT -> {
                         isEnabled = false
                         onBackPressedDispatcher.onBackPressed()
@@ -532,9 +557,11 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
                             handleServiceResolveResult(resolver.resolve())
                             serviceResolveJob = null
                         }
-                        controller.updateConnection(null,
+                        controller.updateConnection(
+                            null,
                             getString(R.string.resolving_openhab),
-                            R.drawable.ic_home_search_outline_grey_340dp)
+                            R.drawable.ic_home_search_outline_grey_340dp
+                        )
                     }
                 } else {
                     val officialServer = !failureReason.wouldHaveUsedLocalConnection() &&
@@ -618,8 +645,7 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
                     arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
                 }
             }
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ->
-                arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION)
             else -> null
         }
 
@@ -633,7 +659,7 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
                 Log.d(TAG, "Cannot auto select server: Location off")
                 showSnackbar(
                     SNACKBAR_TAG_SWITCHED_SERVER,
-                    R.string.settings_multi_server_wifi_ssid_location_off,
+                    R.string.settings_multi_server_wifi_ssid_location_off
                 )
                 return -1
             }
@@ -731,8 +757,11 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
             val wifiManager = getWifiManager(OpenHabApplication.DATA_ACCESS_TAG_SUGGEST_TURN_ON_WIFI)
             @Suppress("DEPRECATION")
             wifiManager.isWifiEnabled = true
-            controller.updateConnection(null, getString(R.string.waiting_for_wifi),
-                R.drawable.ic_wifi_strength_outline_grey_24dp)
+            controller.updateConnection(
+                null,
+                getString(R.string.waiting_for_wifi),
+                R.drawable.ic_wifi_strength_outline_grey_24dp
+            )
         }
     }
 
@@ -765,6 +794,7 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
                         }
                     } else {
                         chooseSitemap()
+                        updateSitemapDrawerEntries()
                     }
                     if (connection !is DemoConnection) {
                         prefs.edit {
@@ -810,8 +840,8 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
             // Add a host here to be able to parse as HttpUrl
             val httpLink = "https://openhab.org$link".toHttpUrlOrNull() ?: return
             val sitemap = httpLink.queryParameter("sitemap")
-                ?: prefs.getDefaultSitemap(connection, serverId)?.name
-            val subpage = httpLink.queryParameter("w")
+                ?: prefs.getDefaultSitemap(connection, serverId)?.name ?: return
+            val subpage = httpLink.queryParameter("w").orDefaultIfEmpty(sitemap)
             executeOrStoreAction(PendingAction.OpenSitemapUrl("/$sitemap/$subpage", serverId))
         } else {
             executeOrStoreAction(PendingAction.OpenWebViewUi(WebViewUi.MAIN_UI, serverId, link))
@@ -829,6 +859,20 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
             val link = intent.getStringExtra(EXTRA_LINK) ?: return
             val serverId = intent.getIntExtra(EXTRA_SERVER_ID, prefs.getPrimaryServerId())
             handleLink(link, serverId)
+        }
+
+        if (!intent.getStringExtra(EXTRA_UI_COMMAND).isNullOrEmpty()) {
+            val command = intent.getStringExtra(EXTRA_UI_COMMAND) ?: return
+            handleUiCommand(command, prefs.getPrimaryServerId())
+            val notificationId = IntentCompat.getParcelableExtra(
+                intent,
+                EXTRA_CLOUD_NOTIFICATION_ID,
+                CloudNotificationId::class.java
+            )
+            if (notificationId != null) {
+                // The invoking intent came from a notification click, so cancel the notification
+                NotificationHelper(this).cancelNotificationById(notificationId)
+            }
         }
 
         when (intent.action) {
@@ -872,36 +916,43 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
     private fun setupDrawer() {
         drawerLayout = findViewById(R.id.drawer_container)
         layoutForSnackbar = drawerLayout
-        drawerToggle = ActionBarDrawerToggle(this, drawerLayout,
-            R.string.drawer_open, R.string.drawer_close)
+        drawerToggle = ActionBarDrawerToggle(
+            this,
+            drawerLayout,
+            R.string.drawer_open,
+            R.string.drawer_close
+        )
         drawerLayout.addDrawerListener(drawerToggle)
-        drawerLayout.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
-            override fun onDrawerOpened(drawerView: View) {
-                val loadedProperties = serverProperties ?: return
-                val connection = connection ?: return
-                if (propsRequestJob?.isActive == true) {
-                    return
+        drawerLayout.addDrawerListener(
+            object : DrawerLayout.SimpleDrawerListener() {
+                override fun onDrawerOpened(drawerView: View) {
+                    val loadedProperties = serverProperties ?: return
+                    val connection = connection ?: return
+                    if (propsRequestJob?.isActive == true) {
+                        return
+                    }
+                    propsRequestJob = launch {
+                        val result = withContext(Dispatchers.IO) {
+                            ServerProperties.updateSitemaps(loadedProperties, connection)
+                        }
+                        when (result) {
+                            is ServerProperties.Companion.PropsSuccess -> {
+                                serverProperties = result.props
+                                updateSitemapDrawerEntries()
+                            }
+                            is ServerProperties.Companion.PropsFailure -> {
+                                handlePropertyFetchFailure(result)
+                            }
+                        }
+                    }
                 }
-                propsRequestJob = launch {
-                    val result = withContext(Dispatchers.IO) {
-                        ServerProperties.updateSitemaps(loadedProperties, connection)
-                    }
-                    when (result) {
-                        is ServerProperties.Companion.PropsSuccess -> {
-                            serverProperties = result.props
-                            updateSitemapDrawerEntries()
-                        }
-                        is ServerProperties.Companion.PropsFailure -> {
-                            handlePropertyFetchFailure(result)
-                        }
-                    }
+
+                override fun onDrawerClosed(drawerView: View) {
+                    super.onDrawerClosed(drawerView)
+                    updateDrawerMode(false)
                 }
             }
-            override fun onDrawerClosed(drawerView: View) {
-                super.onDrawerClosed(drawerView)
-                updateDrawerMode(false)
-            }
-        })
+        )
         drawerLayout.setDrawerShadow(R.drawable.drawer_shadow, GravityCompat.START)
         // Ensure drawer layout uses the same background as the app bar layout,
         // even if the toolbar is currently hidden
@@ -1127,9 +1178,8 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
         launch {
             val context = this@MainActivity
             try {
-                item.icon = conn.httpClient.get(
-                    sitemap.icon.toUrl(context, context.determineDataUsagePolicy(conn).loadIconsWithState)
-                )
+                item.icon = conn.httpClient
+                    .get(sitemap.icon.toUrl(context, context.determineDataUsagePolicy(conn).loadIconsWithState))
                     .asBitmap(
                         defaultIcon!!.intrinsicWidth,
                         getIconFallbackColor(IconBackground.APP_THEME),
@@ -1290,7 +1340,7 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
     fun updateTitle() {
         val title = controller.currentTitle
         val activeServerName = ServerConfiguration.load(prefs, getSecretPrefs(), prefs.getActiveServerId())?.name
-        setTitle(title ?: activeServerName ?: getString(R.string.app_name))
+        setTitle(title.orDefaultIfEmpty(activeServerName.orEmpty()).orDefaultIfEmpty(getString(R.string.app_name)))
         drawerToggle.isDrawerIndicatorEnabled = !controller.canGoBack()
     }
 
@@ -1379,8 +1429,10 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
                     val authHeader = result.request.header("Authorization")
                     if (authHeader?.startsWith("Basic") == true) {
                         val base64Credentials = authHeader.substring("Basic".length).trim()
-                        val credentials = String(Base64.decode(base64Credentials, Base64.DEFAULT),
-                            Charset.forName("UTF-8"))
+                        val credentials = String(
+                            Base64.decode(base64Credentials, Base64.DEFAULT),
+                            Charset.forName("UTF-8")
+                        )
                         append("\nUsername: ")
                         append(credentials.substring(0, credentials.indexOf(":")))
                     }
@@ -1419,7 +1471,8 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
             .filter { !hasPermissions(arrayOf(it)) }
             .toMutableList()
 
-        val length = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        val length = if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             !hasPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
         ) {
             missingPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -1466,7 +1519,7 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
         }
     }
 
-    private fun setupUiCommandItem () {
+    private fun setupUiCommandItem() {
         uiCommandItemJob?.cancel()
         val setting = prefs.getStringOrNull(PrefKeys.UI_COMMAND_ITEM).toItemUpdatePrefValue()
         if (setting.first) {
@@ -1477,43 +1530,14 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
     }
 
     private suspend fun listenUiCommandItem(item: String) {
-        val connection = connection ?: return
-        val eventSubscription = connection.httpClient.makeSse(
-            // Support for both the "openhab" and the older "smarthome" root topic by using a wildcard
-            connection.httpClient.buildUrl("rest/events?topics=*/items/$item/command")
-        )
-
-        try {
-            while (isActive) {
-                try {
-                    val event = JSONObject(eventSubscription.getNextEvent())
-                    if (event.optString("type") == "ALIVE") {
-                        Log.d(TAG, "Got ALIVE event")
-                        continue
-                    }
-                    val topic = event.getString("topic")
-                    val topicPath = topic.split('/')
-                    // Possible formats:
-                    // - openhab/items/<item>/statechanged
-                    // - openhab/items/<group item>/<item>/statechanged
-                    // When an update for a group is sent, there's also one for the individual item.
-                    // Therefore always take the element on index two.
-                    if (topicPath.size !in 4..5) {
-                        throw JSONException("Unexpected topic path $topic")
-                    }
-                    val state = JSONObject(event.getString("payload")).getString("value")
-                    Log.d(TAG, "Got state by event: $state")
-                    handleUiCommand(state)
-                } catch (e: JSONException) {
-                    Log.e(TAG, "Failed parsing JSON of state change event", e)
-                }
-            }
-        } finally {
-            eventSubscription.cancel()
+        ItemClient.listenForItemChange(this, connection ?: return, item) { _, payload ->
+            val state = payload.getString("value")
+            Log.d(TAG, "Got state by event: $state")
+            handleUiCommand(state, prefs.getActiveServerId())
         }
     }
 
-    private fun handleUiCommand(command: String) {
+    private fun handleUiCommand(command: String, serverId: Int) {
         val prefix = command.substringBefore(":")
         val commandContent = command.removePrefix("$prefix:")
         when (prefix) {
@@ -1541,7 +1565,7 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
                     }
                 }
             }
-            "navigate" -> handleLink(commandContent, prefs.getActiveServerId())
+            "navigate" -> handleLink(commandContent, serverId)
             "close" -> uiCommandItemNotification?.dismiss()
             "back" -> onBackPressedCallback.handleOnBackPressed()
             "reload" -> recreate()
@@ -1552,22 +1576,36 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
     }
 
     private fun manageHabPanelShortcut(visible: Boolean) {
-        manageShortcut(visible, "habpanel", ACTION_HABPANEL_SELECTED,
-            R.string.mainmenu_openhab_habpanel, R.mipmap.ic_shortcut_habpanel,
-            R.string.app_shortcut_disabled_habpanel)
+        manageShortcut(
+            visible,
+            "habpanel",
+            ACTION_HABPANEL_SELECTED,
+            R.string.mainmenu_openhab_habpanel,
+            R.mipmap.ic_shortcut_habpanel,
+            R.string.app_shortcut_disabled_habpanel
+        )
     }
 
     private fun manageNotificationShortcut(visible: Boolean) {
-        manageShortcut(visible, "notification", ACTION_NOTIFICATION_SELECTED,
-            R.string.app_notifications, R.mipmap.ic_shortcut_notifications,
-            R.string.app_shortcut_disabled_notifications)
+        manageShortcut(
+            visible,
+            "notification",
+            ACTION_NOTIFICATION_SELECTED,
+            R.string.app_notifications,
+            R.mipmap.ic_shortcut_notifications,
+            R.string.app_shortcut_disabled_notifications
+        )
     }
 
     private fun manageVoiceRecognitionShortcut(visible: Boolean) {
-        manageShortcut(visible, "voice_recognition", ACTION_VOICE_RECOGNITION_SELECTED,
+        manageShortcut(
+            visible,
+            "voice_recognition",
+            ACTION_VOICE_RECOGNITION_SELECTED,
             R.string.mainmenu_openhab_voice_recognition,
             R.mipmap.ic_shortcut_voice_recognition,
-            R.string.app_shortcut_disabled_voice_recognition)
+            R.string.app_shortcut_disabled_voice_recognition
+        )
     }
 
     private fun manageShortcut(
@@ -1601,18 +1639,23 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
 
     private fun setVoiceWidgetComponentEnabledSetting(component: Class<*>, isSpeechRecognizerAvailable: Boolean) {
         val voiceWidget = ComponentName(this, component)
-        val newState = if (isSpeechRecognizerAvailable)
+        val newState = if (isSpeechRecognizerAvailable) {
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        else
+        } else {
             PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
         packageManager.setComponentEnabledSetting(voiceWidget, newState, PackageManager.DONT_KILL_APP)
     }
 
     private sealed class PendingAction {
         class ChooseSitemap : PendingAction()
+
         class OpenSitemapUrl(val url: String, val serverId: Int) : PendingAction()
+
         class OpenWebViewUi(val ui: WebViewUi, val serverId: Int, val subpage: String?) : PendingAction()
+
         class LaunchVoiceRecognition : PendingAction()
+
         class OpenNotification(val notificationId: String, val primary: Boolean) : PendingAction()
     }
 
@@ -1629,6 +1672,8 @@ class MainActivity : AbstractBaseActivity(), ConnectionFactory.UpdateListener {
         const val EXTRA_SUBPAGE = "subpage"
         const val EXTRA_LINK = "link"
         const val EXTRA_PERSISTED_NOTIFICATION_ID = "persistedNotificationId"
+        const val EXTRA_UI_COMMAND = "uiCommand"
+        const val EXTRA_CLOUD_NOTIFICATION_ID = "cloudNotificationId"
 
         const val SNACKBAR_TAG_DEMO_MODE_ACTIVE = "demoModeActive"
         const val SNACKBAR_TAG_PRESS_AGAIN_EXIT = "pressAgainToExit"

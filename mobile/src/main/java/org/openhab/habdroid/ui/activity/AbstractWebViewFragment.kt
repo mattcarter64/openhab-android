@@ -145,6 +145,7 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         webView = view.findViewById(R.id.webview)
+        webView?.settings?.mediaPlaybackRequiresUserGesture = false
         webView?.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 Log.d(TAG, "progressCallback: progress = $newProgress")
@@ -461,6 +462,7 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
                 android.Manifest.permission.CAMERA
             )
         )
+
         private fun permsToWebResources(androidPermissions: Array<String>) = PERMISSION_REQUEST_MAPPING
             .filter { (_, perms) -> perms.all { perm -> androidPermissions.contains(perm) } }
             .keys
@@ -473,6 +475,7 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
 
     interface ParentCallback {
         fun closeFragment()
+
         fun updateActionBarState()
     }
 

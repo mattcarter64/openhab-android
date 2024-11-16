@@ -49,6 +49,7 @@ import androidx.preference.PreferenceManager
 import com.caverock.androidsvg.RenderOptions
 import com.caverock.androidsvg.SVG
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.color.MaterialColors
 import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
@@ -272,8 +273,7 @@ fun InputStream.svgToBitmap(
     }
 }
 
-fun NodeList.forEach(action: (Node) -> Unit) =
-    (0 until length).forEach { index -> action(item(index)) }
+fun NodeList.forEach(action: (Node) -> Unit) = (0 until length).forEach { index -> action(item(index)) }
 
 fun JSONArray.forEach(action: (JSONObject) -> Unit) =
     (0 until length()).forEach { index -> action(getJSONObject(index)) }
@@ -294,6 +294,10 @@ fun JSONObject.optFloatOrNull(key: String): Float? {
     return if (has(key)) getDouble(key).toFloat() else null
 }
 
+fun JSONObject.optIntOrNull(key: String): Int? {
+    return if (has(key)) getInt(key) else null
+}
+
 fun JSONObject.optBooleanOrNull(key: String): Boolean? {
     return if (has(key)) getBoolean(key) else null
 }
@@ -304,6 +308,12 @@ fun JSONObject.optStringOrNull(key: String): String? {
 
 fun JSONObject.optStringOrFallback(key: String, fallback: String?): String? {
     return if (has(key)) getString(key) else fallback
+}
+
+fun String.toJsonArrayOrNull() = try {
+    JSONArray(this)
+} catch (e: Exception) {
+    null
 }
 
 fun Context.getPrefs(): SharedPreferences {
@@ -337,14 +347,17 @@ fun Context.hasPermissions(permissions: Array<String>) = permissions.firstOrNull
 fun Context.getHumanReadableErrorMessage(url: String, httpCode: Int, error: Throwable?, short: Boolean): CharSequence {
     return if (error.hasCause(UnknownHostException::class.java)) {
         getString(
-            if (short) R.string.error_short_unable_to_resolve_hostname else R.string.error_unable_to_resolve_hostname)
+            if (short) R.string.error_short_unable_to_resolve_hostname else R.string.error_unable_to_resolve_hostname
+        )
     } else if (error.hasCause(CertificateExpiredException::class.java)) {
         getString(if (short) R.string.error_short_certificate_expired else R.string.error_certificate_expired)
     } else if (error.hasCause(CertificateNotYetValidException::class.java)) {
         getString(
-            if (short) R.string.error_short_certificate_not_valid_yet else R.string.error_certificate_not_valid_yet)
+            if (short) R.string.error_short_certificate_not_valid_yet else R.string.error_certificate_not_valid_yet
+        )
     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
-        error.hasCause(CertificateRevokedException::class.java)) {
+        error.hasCause(CertificateRevokedException::class.java)
+    ) {
         getString(if (short) R.string.error_short_certificate_revoked else R.string.error_certificate_revoked)
     } else if (error.hasCause(SSLPeerUnverifiedException::class.java)) {
         getString(
@@ -354,8 +367,13 @@ fun Context.getHumanReadableErrorMessage(url: String, httpCode: Int, error: Thro
     } else if (error.hasCause(CertPathValidatorException::class.java)) {
         getString(if (short) R.string.error_short_certificate_not_trusted else R.string.error_certificate_not_trusted)
     } else if (error.hasCause(SSLException::class.java) || error.hasCause(SSLHandshakeException::class.java)) {
-        getString(if (short) R.string.error_short_connection_sslhandshake_failed else
-            R.string.error_connection_sslhandshake_failed)
+        getString(
+            if (short) {
+                R.string.error_short_connection_sslhandshake_failed
+            } else {
+                R.string.error_connection_sslhandshake_failed
+            }
+        )
     } else if (error.hasCause(ConnectException::class.java) || error.hasCause(SocketTimeoutException::class.java)) {
         getString(if (short) R.string.error_short_connection_failed else R.string.error_connection_failed)
     } else if (error.hasCause(IOException::class.java) && error.hasCause(EOFException::class.java)) {
@@ -435,13 +453,7 @@ fun Context.determineDataUsagePolicy(conn: Connection? = null): DataUsagePolicy 
 
 @ColorInt
 fun Context.resolveThemedColor(@AttrRes colorAttr: Int, @ColorInt fallbackColor: Int = 0): Int {
-    val tv = TypedValue()
-    theme.resolveAttribute(colorAttr, tv, true)
-    return if (tv.type >= TypedValue.TYPE_FIRST_COLOR_INT && tv.type <= TypedValue.TYPE_LAST_COLOR_INT) {
-        tv.data
-    } else {
-        fallbackColor
-    }
+    return MaterialColors.getColor(this, colorAttr, fallbackColor)
 }
 
 @ColorRes
@@ -478,16 +490,18 @@ enum class IconBackground {
     LIGHT,
     DARK
 }
+
 @ColorInt
 fun Context.getIconFallbackColor(iconBackground: IconBackground) = when (iconBackground) {
     IconBackground.APP_THEME -> resolveThemedColor(R.attr.colorOnBackground)
     IconBackground.OS_THEME -> {
         val currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         val isDark = currentNightMode != Configuration.UI_MODE_NIGHT_NO
-        val colorRes = if (isDark)
+        val colorRes = if (isDark) {
             R.color.on_background_default_theme_dark
-        else
+        } else {
             R.color.on_background_default_theme_light
+        }
         ContextCompat.getColor(this, colorRes)
     }
     IconBackground.LIGHT -> ContextCompat.getColor(this, R.color.on_background_default_theme_light)
@@ -581,6 +595,7 @@ fun ServiceInfo.addToPrefs(context: Context) {
         null,
         null,
         false,
+        null,
         null
     )
     config.saveToPrefs(context.getPrefs(), context.getSecretPrefs())
@@ -600,11 +615,10 @@ fun Menu.getGroupItems(groupId: Int): List<MenuItem> {
 fun PackageManager.isInstalled(app: String): Boolean {
     return try {
         // Some devices return `null` for getApplicationInfo()
-        @Suppress("UNNECESSARY_SAFE_CALL", "SAFE_CALL_WILL_CHANGE_NULLABILITY", "SimplifyBooleanWithConstants")
+        @Suppress("UNNECESSARY_SAFE_CALL")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getApplicationInfo(app, PackageManager.ApplicationInfoFlags.of(0))?.enabled == true
         } else {
-            @Suppress("DEPRECATION")
             getApplicationInfo(app, 0)?.enabled == true
         }
     } catch (e: PackageManager.NameNotFoundException) {
@@ -628,7 +642,9 @@ inline fun <reified T> Intent.parcelable(key: String): T? {
     setExtrasClassLoader(T::class.java.classLoader)
     return when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelableExtra(key, T::class.java)
-        else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
+        else ->
+            @Suppress("DEPRECATION")
+            getParcelableExtra(key) as? T
     }
 }
 
@@ -636,16 +652,22 @@ inline fun <reified T> Intent.parcelableArrayList(key: String): List<T>? {
     setExtrasClassLoader(T::class.java.classLoader)
     return when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelableArrayListExtra(key, T::class.java)
-        else -> @Suppress("DEPRECATION") getParcelableArrayListExtra(key)
+        else ->
+            @Suppress("DEPRECATION")
+            getParcelableArrayListExtra(key)
     }
 }
 
 inline fun <reified T> Bundle.parcelable(key: String): T? = when {
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelable(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getParcelable(key) as? T
+    else ->
+        @Suppress("DEPRECATION")
+        getParcelable(key) as? T
 }
 
 inline fun <reified T> Bundle.parcelableArrayList(key: String): List<T>? = when {
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelableArrayList(key, T::class.java)
-    else -> @Suppress("DEPRECATION") getParcelableArrayList(key)
+    else ->
+        @Suppress("DEPRECATION")
+        getParcelableArrayList(key)
 }

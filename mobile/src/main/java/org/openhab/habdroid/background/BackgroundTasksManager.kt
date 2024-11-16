@@ -37,7 +37,6 @@ import android.os.Parcelable
 import android.speech.RecognizerIntent
 import android.telephony.TelephonyManager
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -64,6 +63,7 @@ import org.openhab.habdroid.background.tiles.AbstractTileService
 import org.openhab.habdroid.background.tiles.TileData
 import org.openhab.habdroid.core.CloudMessagingHelper
 import org.openhab.habdroid.core.OpenHabApplication
+import org.openhab.habdroid.model.CloudNotificationAction
 import org.openhab.habdroid.model.NfcTag
 import org.openhab.habdroid.ui.TaskerItemPickerActivity
 import org.openhab.habdroid.ui.homescreenwidget.ItemUpdateWidget
@@ -198,7 +198,8 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 }
             }
             ACTION_VOICE_RESULT -> {
-                val voiceCommand = intent.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.elementAtOrNull(0)
+                val voiceCommand = intent.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                    ?.elementAtOrNull(0)
                     ?: return
                 Log.i(TAG, "Recognized text: $voiceCommand")
 
@@ -279,8 +280,10 @@ class BackgroundTasksManager : BroadcastReceiver() {
         const val WORKER_TAG_PREFIX_TASKER = "tasker-"
         const val WORKER_TAG_PREFIX_WIDGET = "widget-"
         const val WORKER_TAG_PREFIX_TILE = "tile-"
+        const val WORKER_TAG_PREFIX_NOTIFICATION = "notification-"
         const val WORKER_TAG_PREFIX_TILE_ID = "tile_id-"
         const val WORKER_TAG_VOICE_COMMAND = "voiceCommand"
+
         fun buildWorkerTagForServer(id: Int) = "server-id-$id"
 
         private const val GADGETBRIDGE_ACTION_PREFIX = "nodomain.freeyourgadget.gadgetbridge."
@@ -306,6 +309,7 @@ class BackgroundTasksManager : BroadcastReceiver() {
             PrefKeys.SEND_WIFI_SSID,
             PrefKeys.SEND_DND_MODE
         )
+
         // These package names must be added to the manifest as well
         private val IGNORED_PACKAGES_FOR_ALARM = listOf(
             "net.dinglisch.android.taskerm",
@@ -337,7 +341,8 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 // These broadcasts are already defined in the manifest, so we only need them on Android 8+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     if (prefs.isItemUpdatePrefEnabled(PrefKeys.SEND_BATTERY_LEVEL) ||
-                        prefs.isItemUpdatePrefEnabled(PrefKeys.SEND_CHARGING_STATE)) {
+                        prefs.isItemUpdatePrefEnabled(PrefKeys.SEND_CHARGING_STATE)
+                    ) {
                         addAction(Intent.ACTION_POWER_CONNECTED)
                         addAction(Intent.ACTION_POWER_DISCONNECTED)
                         addAction(Intent.ACTION_BATTERY_LOW)
@@ -354,7 +359,8 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 }
                 // This broadcast is only sent to registered receivers, so we need that in any case
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                    prefs.isItemUpdatePrefEnabled(PrefKeys.SEND_DND_MODE)) {
+                    prefs.isItemUpdatePrefEnabled(PrefKeys.SEND_DND_MODE)
+                ) {
                     addAction(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED)
                 }
             }
@@ -421,6 +427,20 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 asCommand = true,
                 forceUpdate = true,
                 secondaryTags = listOf(WORKER_TAG_PREFIX_TILE_ID + tileId)
+            )
+        }
+
+        fun enqueueNotificationAction(context: Context, action: CloudNotificationAction.Action.ItemCommandAction) {
+            enqueueItemUpload(
+                context,
+                WORKER_TAG_PREFIX_NOTIFICATION + action.itemName,
+                action.itemName,
+                null,
+                ItemUpdateWorker.ValueWithInfo(action.command),
+                isImportant = true,
+                showToast = true,
+                asCommand = true,
+                forceUpdate = true
             )
         }
 
@@ -494,12 +514,19 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS
             )
 
-            Log.d(TAG, "Scheduling periodic workers with $repeatInterval repeat interval. Currently running:" +
-                " notCharging $isNotChargingWorkerRunning, charging $isChargingWorkerRunning")
+            Log.d(
+                TAG,
+                "Scheduling periodic workers with $repeatInterval repeat interval. Currently running:" +
+                    " notCharging $isNotChargingWorkerRunning, charging $isChargingWorkerRunning"
+            )
 
-            val notChargingWorkRequest = PeriodicWorkRequest.Builder(PeriodicItemUpdateWorker::class.java,
-                repeatInterval, TimeUnit.MILLISECONDS,
-                flexInterval, TimeUnit.MILLISECONDS)
+            val notChargingWorkRequest = PeriodicWorkRequest.Builder(
+                PeriodicItemUpdateWorker::class.java,
+                repeatInterval,
+                TimeUnit.MILLISECONDS,
+                flexInterval,
+                TimeUnit.MILLISECONDS
+            )
                 .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
                 .addTag(WORKER_TAG_PERIODIC_TRIGGER)
                 .addTag(WORKER_TAG_PERIODIC_TRIGGER_NOT_CHARGING)
@@ -511,9 +538,13 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 requiresCharging = true
             )
 
-            val chargingWorkRequest = PeriodicWorkRequest.Builder(PeriodicItemUpdateWorker::class.java,
-                    PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS, TimeUnit.MILLISECONDS,
-                    PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS, TimeUnit.MILLISECONDS)
+            val chargingWorkRequest = PeriodicWorkRequest.Builder(
+                PeriodicItemUpdateWorker::class.java,
+                PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS,
+                TimeUnit.MILLISECONDS,
+                PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
+                TimeUnit.MILLISECONDS
+            )
                 .setConstraints(chargingConstraints)
                 .addTag(WORKER_TAG_PERIODIC_TRIGGER)
                 .addTag(WORKER_TAG_PERIODIC_TRIGGER_CHARGING)
@@ -605,10 +636,7 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 .setSmallIcon(R.drawable.ic_openhab_appicon_white_24dp)
                 .setContentTitle(context.getString(R.string.send_device_info_to_server_short))
                 .setContentText(debugInfo)
-                .setStyle(
-                    NotificationCompat.BigTextStyle()
-                        .bigText(debugInfo)
-                )
+                .setStyle(NotificationCompat.BigTextStyle().bigText(debugInfo))
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(true)
                 .setColor(ContextCompat.getColor(context, R.color.openhab_orange))
@@ -661,8 +689,11 @@ class BackgroundTasksManager : BroadcastReceiver() {
             )
             val workRequest = OneTimeWorkRequest.Builder(ItemUpdateWorker::class.java)
                 .setConstraints(constraints)
-                .setBackoffCriteria(if (isImportant) BackoffPolicy.LINEAR else BackoffPolicy.EXPONENTIAL,
-                    WorkRequest.MIN_BACKOFF_MILLIS, TimeUnit.MILLISECONDS)
+                .setBackoffCriteria(
+                    if (isImportant) BackoffPolicy.LINEAR else BackoffPolicy.EXPONENTIAL,
+                    WorkRequest.MIN_BACKOFF_MILLIS,
+                    TimeUnit.MILLISECONDS
+                )
                 .addTag(primaryTag)
                 .addTag(WORKER_TAG_ITEM_UPLOADS)
                 .addTag(
@@ -756,25 +787,29 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
                 val plugged = batteryStatus?.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)
                 Log.d(TAG, "EXTRA_STATUS is $status, EXTRA_PLUGGED is $plugged")
-                val state = if (status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                    status == BatteryManager.BATTERY_STATUS_FULL) {
-                    when (plugged) {
-                        BatteryManager.BATTERY_PLUGGED_USB -> "USB"
-                        BatteryManager.BATTERY_PLUGGED_AC -> "AC"
-                        BatteryManager.BATTERY_PLUGGED_WIRELESS -> "WIRELESS"
-                        else -> "UNKNOWN_CHARGER"
+                val state =
+                    if (status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                        status == BatteryManager.BATTERY_STATUS_FULL
+                    ) {
+                        when (plugged) {
+                            BatteryManager.BATTERY_PLUGGED_USB -> "USB"
+                            BatteryManager.BATTERY_PLUGGED_AC -> "AC"
+                            BatteryManager.BATTERY_PLUGGED_WIRELESS -> "WIRELESS"
+                            else -> "UNKNOWN_CHARGER"
+                        }
+                    } else {
+                        "UNDEF"
                     }
-                } else {
-                    "UNDEF"
-                }
                 ItemUpdateWorker.ValueWithInfo(state, type = ItemUpdateWorker.ValueType.MapUndefToOffForSwitchItems)
             }
             VALUE_GETTER_MAP[PrefKeys.SEND_WIFI_SSID] = { context, _ ->
                 val wifiManager = context.getWifiManager(OpenHabApplication.DATA_ACCESS_TAG_SEND_DEV_INFO)
                 val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
                 val requiredPermissions = getRequiredPermissionsForTask(PrefKeys.SEND_WIFI_SSID)
+
                 // TODO: Replace deprecated function
-                @Suppress("DEPRECATION") val ssidToSend = wifiManager.connectionInfo.let { info ->
+                @Suppress("DEPRECATION")
+                val ssidToSend = wifiManager.connectionInfo.let { info ->
                     when {
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                             !LocationManagerCompat.isLocationEnabled(locationManager) -> {
@@ -790,17 +825,20 @@ class BackgroundTasksManager : BroadcastReceiver() {
                 }
                 ItemUpdateWorker.ValueWithInfo(ssidToSend)
             }
-            @RequiresApi(Build.VERSION_CODES.M)
             VALUE_GETTER_MAP[PrefKeys.SEND_DND_MODE] = { context, _ ->
-                val nm = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                val mode = when (nm.currentInterruptionFilter) {
-                    NotificationManager.INTERRUPTION_FILTER_NONE -> "TOTAL_SILENCE"
-                    NotificationManager.INTERRUPTION_FILTER_PRIORITY -> "PRIORITY"
-                    NotificationManager.INTERRUPTION_FILTER_ALARMS -> "ALARMS"
-                    NotificationManager.INTERRUPTION_FILTER_ALL -> "OFF"
-                    else -> "UNDEF"
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val nm = context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                    val mode = when (nm.currentInterruptionFilter) {
+                        NotificationManager.INTERRUPTION_FILTER_NONE -> "TOTAL_SILENCE"
+                        NotificationManager.INTERRUPTION_FILTER_PRIORITY -> "PRIORITY"
+                        NotificationManager.INTERRUPTION_FILTER_ALARMS -> "ALARMS"
+                        NotificationManager.INTERRUPTION_FILTER_ALL -> "OFF"
+                        else -> "UNDEF"
+                    }
+                    ItemUpdateWorker.ValueWithInfo(mode)
+                } else {
+                    ItemUpdateWorker.ValueWithInfo("UNDEF")
                 }
-                ItemUpdateWorker.ValueWithInfo(mode)
             }
             VALUE_GETTER_MAP[PrefKeys.SEND_BLUETOOTH_DEVICES] = { context, _ ->
                 fun BluetoothDevice.isConnected(): Boolean {

@@ -84,6 +84,7 @@
     <string name="settings_no_default_sitemap">No default Sitemap selected</string>
     <!-- %1$s: Default Sitemap label -->
     <string name="settings_current_default_sitemap">Current default Sitemap: %1$s</string>
+    <string name="settings_main_ui_start_page">Main UI start page</string>
     <string name="settings_ui_command_item_howto_url" translatable="false">https://www.openhab.org/docs/apps/android.html#ui-command-item</string>
     <string name="settings_ui_command_item">UI command Item</string>
     <string name="settings_ui_command_item_summary_on">Sitemap can be controlled via Item \"%s\"</string>
@@ -157,6 +158,10 @@
     <string name="device_control">Android device control</string>
     <string name="device_control_subtitle">Description in tiles</string>
     <string name="device_control_hint">Depending on your Android version these tiles are located at long-press menu of the power button or next to the quick tiles</string>
+    <string name="screensaver">Screensaver</string>
+    <string name="screensaver_item">Displayed Item</string>
+    <string name="screensaver_bright_screen">Bright screen</string>
+    <string name="screensaver_error_loading_item">Error loading Item \"%s\"</string>
 
     <!-- App messages strings -->
     <string name="title_voice_widget">Voice commands</string>
@@ -343,8 +348,8 @@
     <string name="notification_channel_messages_default_severity">Default</string>
     <string name="notification_channel_messages_default_severity_description">Notifications sent by the server with no defined severity</string>
     <string name="notification_channel_group_messages">Messages</string>
-    <string name="notification_channel_severity_value">Severity \'%1$s\'</string>
-    <string name="notification_channel_severity_value_description">Notifications sent by the server with severity \'%1$s\'</string>
+    <string name="notification_channel_severity_value">Tag \'%1$s\'</string>
+    <string name="notification_channel_severity_value_description">Notifications sent by the server with tag \'%1$s\'</string>
     <plurals name="summary_notification_text">
         <item quantity="one">%d new notification</item>
         <item quantity="other">%d new notifications</item>
@@ -353,7 +358,7 @@
     <string name="push_notification_status_http_error">Notifications are unavailable: Error connecting to remote server: %s</string>
     <string name="push_notification_status_remote_no_cloud">Notifications are unavailable: Remote server isn\'t an openHAB cloud instance</string>
     <string name="push_notification_status">Status</string>
-    <string name="push_notification_hint">The notifications are polled on a regular schedule, which is the same than for \"Send device information to server\"</string>
+    <string name="push_notification_hint">The notifications are polled on a regular schedule, which is the same as for \"Send device information to server\"</string>
     <plurals name="item_update_error_title">
         <item quantity="one">%d Item could not be updated</item>
         <item quantity="other">%d Items could not be updated</item>

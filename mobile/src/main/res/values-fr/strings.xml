@@ -286,8 +286,6 @@
     <string name="notification_channel_messages_default_severity">Défaut</string>
     <string name="notification_channel_messages_default_severity_description">Notifications envoyées par le serveur sans définition de gravité</string>
     <string name="notification_channel_group_messages">Messages</string>
-    <string name="notification_channel_severity_value">Gravité «%1$s »</string>
-    <string name="notification_channel_severity_value_description">Notifications envoyées par le serveur avec la gravité \'%1$s\'</string>
     <plurals name="summary_notification_text">
         <item quantity="one">%d nouvelles notifications</item>
         <item quantity="other">%d nouvelles notifications</item>
@@ -296,7 +294,6 @@
     <string name="push_notification_status_http_error">Les notifications sont indisponibles : Erreur de connexion au serveur distant : %s</string>
     <string name="push_notification_status_remote_no_cloud">Les notifications sont indisponibles : le serveur distant n\'est pas une instance cloud openHAB</string>
     <string name="push_notification_status">État </string>
-    <string name="push_notification_hint">Les notifications sont interrogées selon une planification régulière, qui est la même que pour \"Envoyer les informations de l\'appareil au serveur\"</string>
     <plurals name="item_update_error_title">
         <item quantity="one">Impossible de mettre à jour %d Item</item>
         <item quantity="other">Impossible de mettre à jour %d Items</item>

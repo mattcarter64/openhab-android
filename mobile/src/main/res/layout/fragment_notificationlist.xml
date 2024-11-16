@@ -15,6 +15,7 @@
             android:id="@android:id/list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:scrollbars="vertical"
             tools:visibility="gone" />
 
         <LinearLayout
@@ -43,6 +44,7 @@
                 android:padding="16dp"
                 android:textAppearance="?android:attr/textAppearanceMedium"
                 android:textColor="?colorOnSurfaceVariant"
+                android:gravity="center"
                 tools:text="Some error occurred" />
 
             <com.google.android.material.button.MaterialButton
@@ -53,6 +55,20 @@
                 android:text="@string/try_again_button" />
 
         </LinearLayout>
+
+        <com.faltenreich.skeletonlayout.SkeletonLayout
+            android:id="@+id/skeletonLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:maskColor="?skeletonBackground"
+            app:shimmerColor="?skeletonShimmer">
+
+            <LinearLayout
+                android:id="@+id/skeletonList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical" />
+        </com.faltenreich.skeletonlayout.SkeletonLayout>
 
     </FrameLayout>
 
