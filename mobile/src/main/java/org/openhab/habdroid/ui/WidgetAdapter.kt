@@ -40,6 +40,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.CallSuper
 import androidx.annotation.LayoutRes
+import androidx.annotation.OptIn
 import androidx.annotation.StringRes
 import androidx.annotation.VisibleForTesting
 import androidx.core.content.ContextCompat
@@ -54,6 +55,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.DialogFragment
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -120,6 +122,7 @@ import org.openhab.habdroid.util.resolveThemedColor
  * This class provides openHAB widgets adapter for list view.
  */
 
+@UnstableApi
 class WidgetAdapter(
     context: Context,
     val serverFlags: Int,
@@ -1424,7 +1427,7 @@ class WidgetAdapter(
             errorView.isVisible = true
         }
 
-        override fun createDataSource(): DataSource {
+        @OptIn(UnstableApi::class) override fun createDataSource(): DataSource {
             val dataSource = DefaultHttpDataSource.Factory()
                 .setUserAgent(HttpClient.USER_AGENT)
                 .setAllowCrossProtocolRedirects(true)
@@ -1823,6 +1826,7 @@ fun View.adjustForWidgetHeight(widget: Widget, fallbackRowCount: Int) {
     }
 }
 
+@UnstableApi
 fun TextView.applyWidgetColor(colorName: String?, mapper: WidgetAdapter.ColorMapper) {
     val origColor = getTag(R.id.originalColor) as ColorStateList?
     val color = mapper.mapColor(colorName)
@@ -1837,6 +1841,7 @@ fun TextView.applyWidgetColor(colorName: String?, mapper: WidgetAdapter.ColorMap
     }
 }
 
+@UnstableApi
 fun WidgetImageView.loadWidgetIcon(connection: Connection, widget: Widget, mapper: WidgetAdapter.ColorMapper) {
     if (widget.icon == null) {
         setImageDrawable(null)
@@ -1854,6 +1859,7 @@ fun WidgetImageView.loadWidgetIcon(connection: Connection, widget: Widget, mappe
     }
 }
 
+@UnstableApi
 fun HttpClient.sendItemUpdate(item: Item?, state: ParsedState.NumberState?) {
     if (item == null || state == null) {
         return
@@ -1867,6 +1873,7 @@ fun HttpClient.sendItemUpdate(item: Item?, state: ParsedState.NumberState?) {
     }
 }
 
+@UnstableApi
 fun HttpClient.sendItemUpdate(item: Item?, state: LocalDateTime?) {
     if (item == null || state == null) {
         return
@@ -1876,6 +1883,7 @@ fun HttpClient.sendItemUpdate(item: Item?, state: LocalDateTime?) {
     }
 }
 
+@UnstableApi
 fun HttpClient.sendItemCommand(item: Item?, command: String): Job? {
     val url = item?.link ?: return null
     return GlobalScope.launch {
