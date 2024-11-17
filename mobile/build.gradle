@@ -21,7 +21,8 @@ buildscript {
 
     dependencies {
         classpath "com.google.gms:google-services:4.4.2"
-        classpath "com.google.firebase:firebase-crashlytics-gradle:2.9.9"
+        classpath 'com.google.firebase:firebase-appdistribution-gradle:5.0.0'
+        classpath "com.google.firebase:firebase-crashlytics-gradle:3.0.2"
         classpath 'com.github.bjoernq:unmockplugin:0.8.0'
         classpath "com.mikepenz.aboutlibraries.plugin:aboutlibraries-plugin:$about_libraries_version"
         classpath "de.jjohannes.gradle:missing-metadata-guava:31.1.1"
@@ -34,6 +35,7 @@ apply plugin: "kotlin-parcelize"
 apply plugin: 'de.mobilej.unmock'
 apply plugin: "com.mikepenz.aboutlibraries.plugin"
 apply plugin: "de.jjohannes.missing-metadata-guava"
+apply plugin: 'com.google.gms.google-services'
 if (!isFoss) {
     apply plugin: "com.google.gms.google-services"
     apply plugin: "com.google.firebase.crashlytics"
@@ -46,7 +48,7 @@ android {
 
     defaultConfig {
         applicationId "org.openhab.habdroid"
-        minSdkVersion 21
+        minSdkVersion 24
         compileSdk 34
         targetSdkVersion 33
         versionCode 524
@@ -145,6 +147,8 @@ repositories {
 }
 
 dependencies {
+    implementation 'com.google.firebase:firebase-inappmessaging-display:21.0.1'
+    implementation 'com.google.firebase:firebase-messaging:24.1.0'
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"
 //    implementation fileTree(dir: 'libs', include: ['*player*debug.jar'])
     implementation 'org.videolan.android:libvlc-all:3.6.0-eap12'
@@ -180,7 +184,7 @@ dependencies {
     implementation "com.github.chrisbanes:PhotoView:2.3.0"
     implementation "com.faltenreich:skeletonlayout:5.0.0"
     // MapView support
-    fullImplementation "com.google.android.gms:play-services-maps:18.2.0"
+    fullImplementation "com.google.android.gms:play-services-maps:19.0.0"
     fossImplementation "org.osmdroid:osmdroid-android:6.1.18"
     // About screen
     implementation "com.github.daniel-stoneuk:material-about-library:3.1.2"
@@ -189,7 +193,7 @@ dependencies {
     implementation "com.mikepenz:aboutlibraries:$about_libraries_version"
 
     // Firebase
-    implementation platform("com.google.firebase:firebase-bom:33.1.2")
+    implementation platform("com.google.firebase:firebase-bom:33.6.0")
     fullImplementation "com.google.firebase:firebase-messaging-ktx"
     fullImplementation "com.google.firebase:firebase-crashlytics-ktx"
 
