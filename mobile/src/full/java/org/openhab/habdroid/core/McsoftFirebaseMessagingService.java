@@ -16,6 +16,8 @@ import androidx.core.app.NotificationCompat;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import java.util.Objects;
+
 public class McsoftFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = McsoftFirebaseMessagingService.class.getSimpleName();
@@ -32,14 +34,16 @@ public class McsoftFirebaseMessagingService extends FirebaseMessagingService {
     public void onMessageReceived(RemoteMessage remoteMessage) {
 
         Log.d(TAG, "From: " + remoteMessage.getFrom());
+        Log.d(TAG, "Notification: " + remoteMessage.getNotification());
+        Log.d(TAG, "Data: " + remoteMessage.getData());
 
         // Check if message contains a data payload.
-        if (remoteMessage.getData().size() > 0) {
-            Log.d(TAG, "Message data payload: " + remoteMessage.getData());
+        if (Objects.requireNonNull(remoteMessage.getNotification()).getTitle() != null) {
 
-            sendNotification(remoteMessage.getData().get("title"), remoteMessage.getData().get("message"), Integer.parseInt(remoteMessage.getData().get("id")));
+            String id = (remoteMessage.getData().isEmpty() || remoteMessage.getData().get("id") == null) ? "1" : remoteMessage.getData().get("id");
 
-            return;
+            sendNotification(remoteMessage.getNotification().getTitle(), remoteMessage.getNotification().getBody(),
+                Integer.parseInt(id));
         }
     }
 

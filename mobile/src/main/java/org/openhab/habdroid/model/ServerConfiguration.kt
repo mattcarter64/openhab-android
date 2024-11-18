@@ -151,8 +151,10 @@ data class ServerConfiguration(
             path ?: return null
             return ServerPath(
                 path.url,
-                if (path.userName.isNullOrEmpty()) "<none>" else "<redacted>",
-                if (path.password.isNullOrEmpty()) "<none>" else "<redacted>",
+                // if (path.userName.isNullOrEmpty()) "<none>" else "<redacted>",
+                if (path.userName.isNullOrEmpty()) "<none>" else path.userName,
+                // if (path.password.isNullOrEmpty()) "<none>" else "<redacted>",
+                if (path.password.isNullOrEmpty()) "<none>" else path.password,
                 path.rtsphost
             )
         }

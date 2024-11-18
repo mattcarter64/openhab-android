@@ -47,6 +47,7 @@ import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
+import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
@@ -84,6 +85,7 @@ import org.openhab.habdroid.util.useCompactSitemapLayout
  * widgets from sitemap page with further navigation through sitemap and everything else!
  */
 
+@UnstableApi
 class WidgetListFragment :
     Fragment(),
     WidgetAdapter.ItemClickListener,
@@ -608,16 +610,18 @@ class WidgetListFragment :
             val icon = if (iconBitmap != null) {
                 val borderSize = activity.resources.dpToPixel(31F)
                 val totalFrameWidth = (borderSize * 2).toInt()
-                val bitmapWithBackground = Bitmap.createBitmap(
-                    iconBitmap.width + totalFrameWidth,
-                    iconBitmap.height + totalFrameWidth,
-                    iconBitmap.config
-                )
-                with(Canvas(bitmapWithBackground)) {
-                    drawColor(if (whiteBackground) Color.WHITE else Color.DKGRAY)
-                    drawBitmap(iconBitmap, borderSize, borderSize, null)
+                val bitmapWithBackground = iconBitmap.config?.let {
+                    Bitmap.createBitmap(
+                        iconBitmap.width + totalFrameWidth,
+                        iconBitmap.height + totalFrameWidth,
+                        it
+                    )
                 }
-                IconCompat.createWithAdaptiveBitmap(bitmapWithBackground)
+                with(bitmapWithBackground?.let { Canvas(it) }) {
+                    this?.drawColor(if (whiteBackground) Color.WHITE else Color.DKGRAY)
+                    this?.drawBitmap(iconBitmap, borderSize, borderSize, null)
+                }
+                bitmapWithBackground?.let { IconCompat.createWithAdaptiveBitmap(it) }
             } else {
                 // Fall back to openHAB icon
                 IconCompat.createWithResource(activity, R.mipmap.icon)
