@@ -9,8 +9,10 @@ import android.content.Intent;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
+
 import org.openhab.habdroid.R;
 import org.openhab.habdroid.ui.MainActivity;
+
 import androidx.core.app.NotificationCompat;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
@@ -33,9 +35,10 @@ public class McsoftFirebaseMessagingService extends FirebaseMessagingService {
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
 
-        Log.d(TAG, "From: " + remoteMessage.getFrom());
-        Log.d(TAG, "Notification: " + remoteMessage.getNotification());
-        Log.d(TAG, "Data: " + remoteMessage.getData());
+        Log.d(TAG, "message received:");
+        Log.d(TAG, "from: " + remoteMessage.getFrom());
+        Log.d(TAG, "notification: " + remoteMessage.getNotification());
+        Log.d(TAG, "data: " + remoteMessage.getData());
 
         // Check if message contains a data payload.
         if (Objects.requireNonNull(remoteMessage.getNotification()).getTitle() != null) {
@@ -49,34 +52,36 @@ public class McsoftFirebaseMessagingService extends FirebaseMessagingService {
 
     private void sendNotification(String title, String text, int id) {
 
+        Log.d(TAG, "send notification: title=" + title + ", text=" + title + ", id=" + id);
+
         Intent intent = new Intent(this, MainActivity.class);
 
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0 /* Request code */, intent,
-                PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
 
         String channelId = getString(R.string.default_notification_channel_id);
 
-        Uri defaultSoundUri= RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
 
         NotificationCompat.Builder notificationBuilder =
-                new NotificationCompat.Builder(this, channelId)
-                        .setSmallIcon(R.mipmap.icon)
-                        .setContentTitle(title)
-                        .setContentText(text)
-                        .setAutoCancel(true)
-                        .setSound(defaultSoundUri)
-                        .setContentIntent(pendingIntent);
+            new NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(R.mipmap.icon)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setAutoCancel(true)
+                .setSound(defaultSoundUri)
+                .setContentIntent(pendingIntent);
 
         NotificationManager notificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         // Since android Oreo notification channel is needed.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(channelId,
-                    "Channel human readable title",
-                    NotificationManager.IMPORTANCE_DEFAULT);
+                "Channel human readable title",
+                NotificationManager.IMPORTANCE_DEFAULT);
             notificationManager.createNotificationChannel(channel);
         }
 
