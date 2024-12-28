@@ -40,7 +40,6 @@ if (!isFoss) {
 }
 
 android {
-    buildToolsVersion '34.0.0'
     useLibrary "org.apache.http.legacy"
     namespace 'org.openhab.habdroid'
 
@@ -48,9 +47,9 @@ android {
         applicationId "org.openhab.habdroid"
         minSdkVersion 21
         compileSdk 34
-        targetSdkVersion 33
-        versionCode 558
-        versionName "3.16.4-beta"
+        targetSdkVersion 34
+        versionCode 561
+        versionName "3.16.7-beta"
         multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "long", "TIMESTAMP", System.currentTimeMillis() + "L"
@@ -167,7 +166,7 @@ dependencies {
     implementation "androidx.media3:media3-exoplayer:$media3_version"
     implementation "androidx.media3:media3-ui:$media3_version"
     implementation "androidx.media3:media3-exoplayer-hls:$media3_version"
-    implementation "org.jmdns:jmdns:3.5.9"
+    implementation "org.jmdns:jmdns:3.6.0"
     implementation "com.squareup.okhttp3:okhttp:$ok_http_version"
     implementation "com.squareup.okhttp3:logging-interceptor:$ok_http_version"
     implementation "com.squareup.okhttp3:okhttp-sse:$ok_http_version"

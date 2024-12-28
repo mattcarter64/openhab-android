@@ -24,8 +24,10 @@ import java.util.Locale
 import java.util.regex.Pattern
 import kotlin.math.roundToInt
 import kotlinx.parcelize.Parcelize
+import org.openhab.habdroid.util.asColorTemperatureToKelvin
 
 @Parcelize
+@ConsistentCopyVisibility
 data class HsvState internal constructor(val hue: Float, val saturation: Float, val value: Float) : Parcelable {
     fun toColor(includeValue: Boolean = true): Int {
         return Color.HSVToColor(floatArrayOf(hue, saturation, if (includeValue) value else 100F))
@@ -33,6 +35,7 @@ data class HsvState internal constructor(val hue: Float, val saturation: Float, 
 }
 
 @Parcelize
+@ConsistentCopyVisibility
 data class ParsedState internal constructor(
     val asString: String,
     val asBoolean: Boolean,
@@ -167,6 +170,7 @@ data class ParsedState internal constructor(
     }
 
     @Parcelize
+    @ConsistentCopyVisibility
     data class NumberState internal constructor(
         val value: Float,
         val unit: String? = null,
@@ -205,6 +209,9 @@ data class ParsedState internal constructor(
 fun ParsedState.NumberState?.withValue(value: Float): ParsedState.NumberState {
     return ParsedState.NumberState(value, this?.unit, this?.format)
 }
+
+fun ParsedState.NumberState.toColorTemperatureInKelvin() =
+    ParsedState.NumberState(value.asColorTemperatureToKelvin(), "K", "%.0f %unit%")
 
 /**
  * Parses a state string into the parsed representation.
