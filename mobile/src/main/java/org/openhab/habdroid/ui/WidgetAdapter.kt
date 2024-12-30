@@ -41,7 +41,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.CallSuper
 import androidx.annotation.LayoutRes
-import androidx.annotation.OptIn
 import androidx.annotation.StringRes
 import androidx.annotation.VisibleForTesting
 import androidx.core.content.ContextCompat
@@ -157,6 +156,7 @@ class WidgetAdapter(
     interface ItemClickListener {
         fun onItemClicked(widget: Widget): Boolean // returns whether click was handled
     }
+
     interface FragmentPresenter {
         fun showBottomSheet(sheet: AbstractWidgetBottomSheet, widget: Widget)
 
@@ -376,6 +376,7 @@ class WidgetAdapter(
                 widgetsById[widget.parentId]?.type == Widget.Type.Frame -> TYPE_NESTED_FRAME
                 else -> TYPE_FRAME
             }
+
             Widget.Type.Group -> TYPE_GROUP
             Widget.Type.Switch -> when {
                 widget.shouldRenderAsPlayer() -> TYPE_PLAYER
@@ -775,6 +776,7 @@ class WidgetAdapter(
                     val state = newValue.let { ParsedState.parseAsNumber(it, item.state?.asNumber?.format) }
                     connection.httpClient.sendItemUpdate(item, state)
                 }
+
                 else -> connection.httpClient.sendItemCommand(item, newValue)
             }
 
@@ -797,10 +799,13 @@ class WidgetAdapter(
                 !displayState.isNullOrEmpty() -> displayState
                 widget.inputHint == Widget.InputTypeHint.Date ->
                     dateTimeState?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT))
+
                 widget.inputHint == Widget.InputTypeHint.Time ->
                     dateTimeState?.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+
                 widget.inputHint == Widget.InputTypeHint.Datetime ->
                     dateTimeState?.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT))
+
                 else -> dateTimeState?.toString()
             }
             valueView?.isVisible = !valueView?.text.isNullOrEmpty()
@@ -1618,6 +1623,8 @@ class WidgetAdapter(
     class RtspVideoViewHolder internal constructor(private val initData: ViewHolderInitData) :
         ViewHolder(initData, R.layout.widgetlist_vlcrtspvideolayout) {
 
+        private val LTAG = RtspVideoViewHolder::class.java.simpleName
+
         // private val initData = initData
         private val videoView: VLCVideoLayout = itemView.findViewById(R.id.vlcrtspvideolayout)
         private var vlcPlayer = VlcPlayer()
@@ -1628,29 +1635,29 @@ class WidgetAdapter(
 
         override fun bind(widget: Widget) {
 
-            Log.d(TAG, "bind:")
+            Log.d(LTAG, "bind:")
 
             vlcPlayer.setup(initData.parent.context, videoView)
 
-            Log.d(TAG, "bind: media player setup complete")
+            Log.d(LTAG, "bind: media player setup complete")
 
             val newVideoUrl = setupVideoUrl(widget)
 
-            Log.d(TAG, "bind: resolved vide url = $newVideoUrl")
+            Log.d(LTAG, "bind: resolved vide url = $newVideoUrl")
 
             vlcPlayer.setVideoUrl(newVideoUrl)
         }
 
         override fun onStart() {
 
-            Log.d(TAG, "onStart:")
+            Log.d(LTAG, "onStart:")
 
             vlcPlayer.start()
         }
 
         override fun onStop() {
 
-            Log.d(TAG, "onStop:")
+            Log.d(LTAG, "onStop:")
 
             vlcPlayer.stop()
         }
@@ -1668,43 +1675,65 @@ class WidgetAdapter(
 
         private fun replaceHost(videoUrl: String?): String? {
 
-            Log.d(TAG, "replaceHost: url=$videoUrl")
+            Log.d(LTAG, "replaceHost: url=$videoUrl")
 
             var newVideoUrl = videoUrl
 
             // TODO rtsp host
             val rtspHost: String? = connection.rtspHost
 
-            Log.d(TAG, "replaceHost: RTSP host from settings=$rtspHost")
+            Log.d(LTAG, "replaceHost: RTSP host from settings=$rtspHost")
 
-            val tempUri = Uri.parse(videoUrl)
+            val currentVideoUri = Uri.parse(videoUrl)
 
-            Log.d(TAG, "replaceHost: authority=" + tempUri.authority + ", enc authority=" + tempUri.encodedAuthority)
+            Log.d(LTAG, "replaceHost: authority=" + currentVideoUri.authority + ", enc authority=" + currentVideoUri.encodedAuthority)
 
             if (rtspHost != null) {
-                var newhost = tempUri.authority
+                var targetRtspHost = rtspHost
+                var targetRtspPort: String? = null
 
-                if (newhost != null && newhost.contains(":")) {
-                    val toks = newhost.split(":")
-
-                    Log.d(TAG, "replaceHost: toks[0]=" + toks[0] + ", toks[1]=" + toks[1])
-
-                    newhost = newhost.replace(toks[0], rtspHost)
-
-                    Log.d(TAG, "replaceHost: toks[0]=" + toks[0] + ", toks[1]=" + toks[1] + ", newhost=" + newhost)
+                if (rtspHost.contains(":")) {
+                    val toks = rtspHost.split(":")
+                    targetRtspHost = toks[0]
+                    targetRtspPort = toks[1]
                 }
 
-                Log.d(TAG, "replaceHost: newhost=$newhost")
+                Log.d(
+                    LTAG,
+                    "replaceHost: target RTSP host: $targetRtspHost, target RTSP port: $targetRtspPort"
+                )
 
-                val builder = Uri.Builder().scheme(tempUri.scheme).path(tempUri.path)
+                var newAuthority = currentVideoUri.authority
 
-                builder.authority(newhost)
-                builder.encodedAuthority(newhost)
+                if (newAuthority != null && newAuthority.contains(":")) {
+                    val toks = newAuthority.split(":")
 
-                for (key in tempUri.queryParameterNames) {
+                    Log.d(LTAG, "replaceHost: newAuthority: current host=${toks[0]}, current port=${toks[1]}")
+
+                    // update host portion
+                    newAuthority = newAuthority.replace(toks[0], targetRtspHost)
+
+                    // check for port replacement
+                    if( targetRtspPort != null ) {
+                        newAuthority = newAuthority.replace(toks[1], targetRtspPort)
+                    }
+
+                    // Log.d(LTAG, "replaceHost: newAuthority=$newAuthority")
+                }
+
+                Log.d(LTAG, "replaceHost: newAuthority=$newAuthority")
+
+                // compose URL
+                val builder = Uri.Builder().scheme(currentVideoUri.scheme).path(currentVideoUri.path)
+
+                // update authority information
+                builder.authority(newAuthority)
+                builder.encodedAuthority(newAuthority)
+
+                for (key in currentVideoUri.queryParameterNames) {
                     // strip audio foo if it exists
-                    val param = tempUri.getQueryParameter(key)
-                    Log.v(TAG, "replaceHost: key=$key, param=$param")
+                    val param = currentVideoUri.getQueryParameter(key)
+                    Log.v(LTAG, "replaceHost: adding query parameter: key=$key, param=$param")
                     if (!key.contains("audio.cgi")) {
                         builder.appendQueryParameter(key, param)
                     }
@@ -1713,7 +1742,7 @@ class WidgetAdapter(
                 newVideoUrl = Uri.decode(builder.build().toString())
             }
 
-            Log.d(TAG, "replaceHost: updated url=$newVideoUrl")
+            Log.d(LTAG, "replaceHost: updated url=$newVideoUrl")
 
             return newVideoUrl
         }
