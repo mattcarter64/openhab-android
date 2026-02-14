@@ -29,9 +29,8 @@ import org.openhab.habdroid.util.asColorTemperatureToKelvin
 @Parcelize
 @ConsistentCopyVisibility
 data class HsvState internal constructor(val hue: Float, val saturation: Float, val value: Float) : Parcelable {
-    fun toColor(includeValue: Boolean = true): Int {
-        return Color.HSVToColor(floatArrayOf(hue, saturation, if (includeValue) value else 100F))
-    }
+    fun toColor(includeValue: Boolean = true): Int =
+        Color.HSVToColor(floatArrayOf(hue, saturation, if (includeValue) value else 100F))
 }
 
 @Parcelize
@@ -45,13 +44,9 @@ data class ParsedState internal constructor(
     val asLocation: Location?,
     val asDateTime: LocalDateTime?
 ) : Parcelable {
-    override fun equals(other: Any?): Boolean {
-        return other is ParsedState && asString == other.asString
-    }
+    override fun equals(other: Any?) = other is ParsedState && asString == other.asString
 
-    override fun hashCode(): Int {
-        return asString.hashCode()
-    }
+    override fun hashCode() = asString.hashCode()
 
     companion object {
         internal fun parseAsBoolean(state: String): Boolean {
@@ -76,7 +71,9 @@ data class ParsedState internal constructor(
         internal fun parseAsNumber(state: String, format: String?): NumberState? {
             return when (state) {
                 "ON" -> NumberState(100F)
+
                 "OFF" -> NumberState(0F)
+
                 else -> {
                     val spacePos = state.indexOf(' ')
                     val number = if (spacePos >= 0) state.substring(0, spacePos) else state
@@ -151,21 +148,21 @@ data class ParsedState internal constructor(
                 in 1f..100f, 0f -> {
                     stateAsFloat.toInt()
                 }
+
                 in 0f..1f -> {
                     1
                 }
+
                 else -> null
             }
         }
 
         private val HSB_PATTERN = Pattern.compile("^([0-9]*\\.?[0-9]+),([0-9]*\\.?[0-9]+),([0-9]*\\.?[0-9]+)$")
 
-        internal fun parseAsDateTime(state: String): LocalDateTime? {
-            return try {
-                LocalDateTime.parse(state.split(".")[0], DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-            } catch (e: DateTimeParseException) {
-                null
-            }
+        internal fun parseAsDateTime(state: String): LocalDateTime? = try {
+            LocalDateTime.parse(state.split(".")[0], DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        } catch (e: DateTimeParseException) {
+            null
         }
     }
 
@@ -176,16 +173,18 @@ data class ParsedState internal constructor(
         val unit: String? = null,
         val format: String? = null
     ) : Parcelable {
-        override fun toString(): String {
-            return toString(Locale.getDefault())
-        }
+        override fun toString() = toString(Locale.getDefault())
 
         /**
          * Like [toString][.toString], but using a specific locale for formatting.
          */
         fun toString(locale: Locale): String {
             if (!format.isNullOrEmpty()) {
-                val actualFormat = format.replace("%unit%", unit.orEmpty())
+                val actualFormat = format
+                    .replace("%unit%", unit.orEmpty())
+                    // In case of 'one' unit, the unit is part of the format pattern, but not part of the value
+                    // sent by the server. Avoid ending the value with a space in that case.
+                    .trim()
                 try {
                     return String.format(locale, actualFormat, getActualValue())
                 } catch (e: IllegalFormatException) {
@@ -196,19 +195,15 @@ data class ParsedState internal constructor(
             return if (unit == null) formatValue() else "${formatValue()} $unit"
         }
 
-        fun formatValue(): String {
-            return getActualValue().toString()
-        }
+        fun formatValue(): String = getActualValue().toString()
 
-        private fun getActualValue(): Number {
-            return if (format != null && format.contains("%d")) value.roundToInt() else value
-        }
+        private fun getActualValue(): Number =
+            if (format != null && format.contains("%d")) value.roundToInt() else value
     }
 }
 
-fun ParsedState.NumberState?.withValue(value: Float): ParsedState.NumberState {
-    return ParsedState.NumberState(value, this?.unit, this?.format)
-}
+fun ParsedState.NumberState?.withValue(value: Float): ParsedState.NumberState =
+    ParsedState.NumberState(value, this?.unit, this?.format)
 
 fun ParsedState.NumberState.toColorTemperatureInKelvin() =
     ParsedState.NumberState(value.asColorTemperatureToKelvin(), "K", "%.0f %unit%")

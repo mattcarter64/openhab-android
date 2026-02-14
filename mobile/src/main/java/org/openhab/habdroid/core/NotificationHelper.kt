@@ -49,6 +49,7 @@ class NotificationHelper(private val context: Context) {
 
     suspend fun handleNewCloudMessage(message: CloudMessage) = when (message) {
         is CloudMessage.CloudNotification -> showNotification(message)
+
         is CloudMessage.CloudHideNotificationRequest -> {
             if (!message.tag.isNullOrEmpty()) {
                 cancelNotificationsByTag(message.tag)
@@ -140,9 +141,8 @@ class NotificationHelper(private val context: Context) {
     }
 
     @TargetApi(23)
-    private fun countCloudNotifications(active: Array<StatusBarNotification>): Int {
-        return active.count { n -> n.id != 0 && (n.groupKey?.endsWith("gcm") == true) }
-    }
+    private fun countCloudNotifications(active: Array<StatusBarNotification>): Int =
+        active.count { n -> n.id != 0 && (n.groupKey?.endsWith("gcm") == true) }
 
     private suspend fun makeNotification(message: CloudMessage.CloudNotification): Notification {
         val iconBitmap = getNotificationIcon(message.icon)
@@ -204,14 +204,17 @@ class NotificationHelper(private val context: Context) {
 
         return when {
             icon == null -> null
+
             connection == null -> {
                 Log.d(TAG, "Got no connection to load icon")
                 null
             }
+
             !context.determineDataUsagePolicy(connection).canDoLargeTransfers -> {
                 Log.d(TAG, "Don't load icon: Data usage policy doesn't allow large transfers")
                 null
             }
+
             else -> {
                 Log.d(TAG, "Load icon from server")
                 try {

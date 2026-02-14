@@ -38,10 +38,7 @@ import org.openhab.habdroid.util.optStringOrNull
 
 @Parcelize
 @ConsistentCopyVisibility
-data class CloudNotificationId internal constructor(
-    val persistedId: String,
-    val referenceId: String?
-) : Parcelable {
+data class CloudNotificationId internal constructor(val persistedId: String, val referenceId: String?) : Parcelable {
     val notificationId get() = (referenceId ?: persistedId).hashCode()
 }
 
@@ -101,10 +98,7 @@ sealed class CloudMessage : Parcelable {
     }
 
     @Parcelize
-    data class CloudHideNotificationRequest(
-        override val id: CloudNotificationId,
-        val tag: String?
-    ) : CloudMessage()
+    data class CloudHideNotificationRequest(override val id: CloudNotificationId, val tag: String?) : CloudMessage()
 
     companion object {
         val TAG = CloudNotification::class.java.simpleName
@@ -144,9 +138,11 @@ fun JSONObject.toCloudMessage(): CloudMessage? {
                 mediaAttachmentUrl = payload?.optStringOrNull("media-attachment-url")
             )
         }
+
         "hideNotification" -> {
             CloudMessage.CloudHideNotificationRequest(id, tag)
         }
+
         else -> {
             Log.w(CloudMessage.TAG, "Got unknown message type $type")
             null
@@ -156,10 +152,8 @@ fun JSONObject.toCloudMessage(): CloudMessage? {
 
 @Parcelize
 @ConsistentCopyVisibility
-data class CloudNotificationAction internal constructor(
-    val label: String,
-    private val internalAction: String
-) : Parcelable {
+data class CloudNotificationAction internal constructor(val label: String, private val internalAction: String) :
+    Parcelable {
     sealed class Action {
         data class UrlAction(val url: String) : Action()
         data class ItemCommandAction(val itemName: String, val command: String) : Action()
@@ -172,14 +166,18 @@ data class CloudNotificationAction internal constructor(
         return when {
             split[0] == "command" && split.size == 3 ->
                 Action.ItemCommandAction(split[1], split[2])
+
             internalAction.startsWith("http://") || internalAction.startsWith("https://") ->
                 Action.UrlAction(internalAction)
+
             split[0] == "ui" && split.size == 3 -> {
                 Action.UiCommandAction("${split[1]}:${split[2]}")
             }
+
             split[0] == "ui" && split.size == 2 -> {
                 Action.UiCommandAction("navigate:${split[1]}")
             }
+
             else -> Action.NoAction
         }
     }

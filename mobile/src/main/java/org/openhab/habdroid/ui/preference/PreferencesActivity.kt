@@ -29,6 +29,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.commit
 import org.openhab.habdroid.R
 import org.openhab.habdroid.background.tiles.AbstractTileService
+import org.openhab.habdroid.databinding.ActivityPrefsBinding
 import org.openhab.habdroid.ui.AbstractBaseActivity
 import org.openhab.habdroid.ui.preference.fragments.AbstractSettingsFragment
 import org.openhab.habdroid.ui.preference.fragments.DayDreamFragment
@@ -47,8 +48,6 @@ class PreferencesActivity : AbstractBaseActivity() {
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_prefs)
-
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         if (savedInstanceState == null) {
@@ -64,6 +63,7 @@ class PreferencesActivity : AbstractBaseActivity() {
                         TileOverviewFragment()
                     }
                 }
+
                 intent.action == AppWidgetManager.ACTION_APPWIDGET_CONFIGURE -> {
                     val id = intent?.extras?.getInt(
                         AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -71,9 +71,11 @@ class PreferencesActivity : AbstractBaseActivity() {
                     ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
                     WidgetSettingsFragment.newInstance(id)
                 }
+
                 intent.action == ACTION_DAY_DREAM -> {
                     DayDreamFragment()
                 }
+
                 else -> {
                     MainSettingsFragment()
                 }
@@ -85,6 +87,11 @@ class PreferencesActivity : AbstractBaseActivity() {
             resultIntent = savedInstanceState.parcelable<Intent>(STATE_KEY_RESULT) ?: Intent()
         }
         setResult(RESULT_OK, resultIntent)
+    }
+
+    override fun inflateBinding(): CommonBinding {
+        val binding = ActivityPrefsBinding.inflate(layoutInflater)
+        return CommonBinding(binding.root, binding.appBar, binding.coordinator, binding.activityContent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -101,6 +108,7 @@ class PreferencesActivity : AbstractBaseActivity() {
                 onBackPressedDispatcher.onBackPressed()
                 true
             }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -158,15 +166,13 @@ class PreferencesActivity : AbstractBaseActivity() {
             fun onLeaveAndDiscard()
         }
 
-        override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-            return AlertDialog.Builder(requireContext())
-                .setTitle(R.string.settings_server_confirm_leave_title)
-                .setMessage(R.string.settings_server_confirm_leave_message)
-                .setPositiveButton(R.string.save) { _, _ -> handleDone(true) }
-                .setNegativeButton(R.string.discard) { _, _ -> handleDone(false) }
-                .setNeutralButton(android.R.string.cancel, null)
-                .create()
-        }
+        override fun onCreateDialog(savedInstanceState: Bundle?): Dialog = AlertDialog.Builder(requireContext())
+            .setTitle(R.string.settings_server_confirm_leave_title)
+            .setMessage(R.string.settings_server_confirm_leave_message)
+            .setPositiveButton(R.string.save) { _, _ -> handleDone(true) }
+            .setNegativeButton(R.string.discard) { _, _ -> handleDone(false) }
+            .setNeutralButton(android.R.string.cancel, null)
+            .create()
 
         private fun handleDone(confirmed: Boolean) {
             val callback = parentFragment as Callback? ?: throw IllegalArgumentException()
@@ -207,8 +213,4 @@ interface CustomDialogPreference {
     fun createDialog(): DialogFragment
 }
 
-data class PushNotificationStatus(
-    val message: String,
-    @DrawableRes val icon: Int,
-    val notifyUser: Boolean
-)
+data class PushNotificationStatus(val message: String, @DrawableRes val icon: Int, val notifyUser: Boolean)

@@ -47,10 +47,12 @@ fun SwipeRefreshLayout.applyColors() {
 fun WebView.setUpForConnection(connection: Connection, url: HttpUrl, avoidAuthentication: Boolean = false) {
     when {
         avoidAuthentication -> { /* Don't add authentication */ }
+
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
             WebViewDatabase.getInstance(context)
                 .setHttpAuthUsernamePassword(url.host, "", connection.username, connection.password)
         }
+
         else -> {
             @Suppress("DEPRECATION")
             setHttpAuthUsernamePassword(url.host, "", connection.username, connection.password)
@@ -99,11 +101,9 @@ fun View.playPressAnimationAndCallBack(postAnimationCallback: () -> Unit) {
     }
 }
 
-fun RemoteViews.duplicate(): RemoteViews {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        RemoteViews(this)
-    } else {
-        @Suppress("DEPRECATION")
-        clone()
-    }
+fun RemoteViews.duplicate(): RemoteViews = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+    RemoteViews(this)
+} else {
+    @Suppress("DEPRECATION")
+    clone()
 }

@@ -32,16 +32,18 @@ import java.util.Calendar
 import java.util.Locale
 import org.openhab.habdroid.BuildConfig
 import org.openhab.habdroid.R
+import org.openhab.habdroid.databinding.ActivityAboutBinding
 import org.openhab.habdroid.util.ScreenLockMode
 import org.openhab.habdroid.util.Util
 import org.openhab.habdroid.util.openInAppStore
 import org.openhab.habdroid.util.openInBrowser
 
-class AboutActivity : AbstractBaseActivity(), FragmentManager.OnBackStackChangedListener {
+class AboutActivity :
+    AbstractBaseActivity(),
+    FragmentManager.OnBackStackChangedListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_about)
         supportFragmentManager.addOnBackStackChangedListener(this)
 
         if (savedInstanceState == null) {
@@ -54,6 +56,11 @@ class AboutActivity : AbstractBaseActivity(), FragmentManager.OnBackStackChanged
 
         updateTitle()
         setResult(RESULT_OK)
+    }
+
+    override fun inflateBinding(): CommonBinding {
+        val binding = ActivityAboutBinding.inflate(layoutInflater)
+        return CommonBinding(binding.root, binding.appBar, binding.coordinator, binding.activityContent)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -73,9 +80,7 @@ class AboutActivity : AbstractBaseActivity(), FragmentManager.OnBackStackChanged
         updateTitle()
     }
 
-    override fun doesLockModeRequirePrompt(mode: ScreenLockMode): Boolean {
-        return mode == ScreenLockMode.Enabled
-    }
+    override fun doesLockModeRequirePrompt(mode: ScreenLockMode): Boolean = mode == ScreenLockMode.Enabled
 
     private fun updateTitle() {
         val fm = supportFragmentManager

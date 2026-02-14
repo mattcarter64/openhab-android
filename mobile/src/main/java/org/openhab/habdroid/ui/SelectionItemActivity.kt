@@ -19,22 +19,23 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.ViewGroup
-import android.widget.RadioButton
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import org.openhab.habdroid.R
 import org.openhab.habdroid.core.connection.ConnectionFactory
+import org.openhab.habdroid.databinding.ActivitySelectionItemBinding
+import org.openhab.habdroid.databinding.SelectionItemBinding
 import org.openhab.habdroid.model.Item
 import org.openhab.habdroid.model.LabeledValue
 import org.openhab.habdroid.util.orDefaultIfEmpty
 import org.openhab.habdroid.util.parcelable
 
 class SelectionItemActivity : AbstractBaseActivity() {
+    private lateinit var binding: ActivitySelectionItemBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "onCreate()")
         super.onCreate(savedInstanceState)
-
-        setContentView(R.layout.activity_selection_item)
 
         val boundItem = intent.extras?.parcelable<Item>(EXTRA_ITEM)
         if (boundItem == null) {
@@ -44,16 +45,24 @@ class SelectionItemActivity : AbstractBaseActivity() {
 
         supportActionBar?.title = boundItem.label.orDefaultIfEmpty(getString(R.string.app_name))
 
-        val selectionList = findViewById<RecyclerView>(R.id.activity_content)
-        selectionList.layoutManager = LinearLayoutManager(this)
-        selectionList.adapter = SelectionAdapter(this, boundItem)
+        binding.list.apply {
+            layoutManager = LinearLayoutManager(this@SelectionItemActivity)
+            adapter = SelectionAdapter(this@SelectionItemActivity, boundItem)
+        }
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return if (item.itemId == android.R.id.home) {
+    override fun inflateBinding(): CommonBinding {
+        binding = ActivitySelectionItemBinding.inflate(layoutInflater)
+        return CommonBinding(binding.root, binding.appBar, binding.coordinator, binding.list)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        android.R.id.home -> {
             finish()
             true
-        } else {
+        }
+
+        else -> {
             super.onOptionsItemSelected(item)
         }
     }
@@ -69,31 +78,29 @@ class SelectionAdapter(context: Context, val item: Item) : RecyclerView.Adapter<
     private val inflater = LayoutInflater.from(context)
     private var itemState = item.state?.asString
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        return SelectionViewHolder(inflater, parent, item)
-    }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
+        SelectionViewHolder(SelectionItemBinding.inflate(inflater, parent, false), item)
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         (holder as SelectionViewHolder).bind(item.options!![position])
     }
 
-    override fun getItemCount(): Int {
-        return item.options?.size ?: -1
-    }
+    override fun getItemCount(): Int = item.options?.size ?: -1
 
-    class SelectionViewHolder(inflater: LayoutInflater, parent: ViewGroup, val item: Item) :
-        RecyclerView.ViewHolder(inflater.inflate(R.layout.selection_item, parent, false)) {
-        private val radioButton: RadioButton = itemView.findViewById(R.id.radio_button)
+    class SelectionViewHolder(private val binding: SelectionItemBinding, val item: Item) :
+        RecyclerView.ViewHolder(binding.root) {
 
         fun bind(option: LabeledValue) {
             val adapter = bindingAdapter as SelectionAdapter?
-            radioButton.isChecked = option.value == adapter?.itemState
-            radioButton.text = option.label
-            radioButton.setOnClickListener {
-                val connection = ConnectionFactory.primaryUsableConnection?.connection ?: return@setOnClickListener
-                adapter?.itemState = option.value
-                adapter?.notifyDataSetChanged()
-                connection.httpClient.sendItemCommand(item, option.value)
+            binding.radioButton.apply {
+                isChecked = option.value == adapter?.itemState
+                text = option.label
+                setOnClickListener {
+                    val connection = ConnectionFactory.primaryUsableConnection?.connection ?: return@setOnClickListener
+                    adapter?.itemState = option.value
+                    adapter?.notifyDataSetChanged()
+                    connection.httpClient.sendItemCommand(item, option.value)
+                }
             }
         }
     }

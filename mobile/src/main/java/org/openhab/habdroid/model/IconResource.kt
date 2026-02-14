@@ -54,6 +54,7 @@ data class IconResource internal constructor(
         val segments = icon.split(":", limit = 3)
         when (segments.size) {
             1 -> iconName = segments[0]
+
             2 -> {
                 iconSource = segments[0]
                 iconName = segments[1]
@@ -61,6 +62,7 @@ data class IconResource internal constructor(
                     iconSet = "baseline"
                 }
             }
+
             3 -> {
                 iconSource = segments[0]
                 iconSet = segments[1]
@@ -75,6 +77,7 @@ data class IconResource internal constructor(
                 iconName = "$iconSet-$iconName"
                 iconSet = "ic"
             }
+
             "f7" -> {
                 iconSource = "iconify"
                 iconSet = "f7"
@@ -92,6 +95,7 @@ data class IconResource internal constructor(
                     .appendPath("$iconName.svg")
                     .appendQueryParameter("height", desiredSizePixels.toString())
             }
+
             else -> {
                 val suffix = when (iconFormat) {
                     IconFormat.Png -> "PNG"
@@ -119,12 +123,10 @@ data class IconResource internal constructor(
         return builder.build().toString()
     }
 
-    fun withCustomState(state: String): IconResource {
-        return IconResource(icon, isOh2, state)
-    }
+    fun withCustomState(state: String) = IconResource(icon, isOh2, state)
 
     companion object {
-        public const val ICONIFY_API_URL = "api.iconify.design"
+        const val ICONIFY_API_URL = "api.iconify.design"
     }
 }
 
@@ -158,13 +160,11 @@ fun SharedPreferences.Editor.putIconResource(key: String, icon: IconResource?): 
 @VisibleForTesting
 fun String.isNoneIcon() = "(oh:([a-z]+:)?)?none".toRegex().matches(this)
 
-fun String?.toOH1IconResource(): IconResource? {
-    return if (isNullOrEmpty() || isNoneIcon()) null else IconResource(this, false, "")
-}
+fun String?.toOH1IconResource(): IconResource? =
+    if (isNullOrEmpty() || isNoneIcon()) null else IconResource(this, false, "")
 
-fun String?.toOH2IconResource(): IconResource? {
-    return if (isNullOrEmpty() || isNoneIcon()) null else IconResource(this, true, "")
-}
+fun String?.toOH2IconResource(): IconResource? =
+    if (isNullOrEmpty() || isNoneIcon()) null else IconResource(this, true, "")
 
 internal fun String?.toOH2WidgetIconResource(
     item: Item?,
@@ -178,8 +178,10 @@ internal fun String?.toOH2WidgetIconResource(
 
     val iconState = when {
         !useState || item == null -> null
+
         // For NULL states, we send 'null' as state when fetching the icon (BasicUI set a predecent for doing so)
         item.state == null -> "null"
+
         // Number items need to follow the format "<value>" or "<value> <unit>"
         item.isOfTypeOrGroupType(Item.Type.Number) || item.isOfTypeOrGroupType(Item.Type.NumberWithDimension) -> {
             item.state.asNumber?.let { numberState ->
@@ -187,23 +189,29 @@ internal fun String?.toOH2WidgetIconResource(
                 "${numberState.formatValue()}$unitSuffix"
             }
         }
+
         item.isOfTypeOrGroupType(Item.Type.Color) -> when {
             // Color sliders just use the brightness part of the color
             type == Widget.Type.Slider -> item.state.asBrightness.toString()
+
             // Color toggles should behave similarly to the logic below (but using the brightness value)
             type == Widget.Type.Switch && !hasMappings -> if (item.state.asBrightness == 0) "OFF" else "ON"
+
             item.state.asHsv != null -> {
                 val color = item.state.asHsv.toColor()
                 String.format(Locale.US, "#%02x%02x%02x", Color.red(color), Color.green(color), Color.blue(color))
             }
+
             else -> item.state.asString
         }
+
         type == Widget.Type.Switch && !hasMappings && !item.isOfTypeOrGroupType(Item.Type.Rollershutter) -> {
             // For switch items without mappings (just ON and OFF) that control a dimmer item
             // and which are not ON or OFF already, set the state to "OFF" instead of 0
             // or to "ON" to fetch the correct icon
             if (item.state.asString == "0" || item.state.asString == "OFF") "OFF" else "ON"
         }
+
         else -> item.state.asString
     }
 

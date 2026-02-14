@@ -25,9 +25,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewStub
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
 import androidx.annotation.AnimRes
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -47,6 +44,7 @@ import org.openhab.habdroid.R
 import org.openhab.habdroid.core.OpenHabApplication
 import org.openhab.habdroid.core.connection.Connection
 import org.openhab.habdroid.core.connection.ConnectionFactory
+import org.openhab.habdroid.databinding.FragmentStatusBinding
 import org.openhab.habdroid.model.LinkedPage
 import org.openhab.habdroid.model.Sitemap
 import org.openhab.habdroid.model.WebViewUi
@@ -76,7 +74,9 @@ import org.openhab.habdroid.util.resolveThemedColor
  * The layout of the content area is up to the respective subclasses.
  */
 abstract class ContentController protected constructor(private val activity: MainActivity) :
-    PageConnectionHolderFragment.ParentCallback, AbstractWebViewFragment.ParentCallback, FragmentLifecycleCallbacks() {
+    FragmentLifecycleCallbacks(),
+    PageConnectionHolderFragment.ParentCallback,
+    AbstractWebViewFragment.ParentCallback {
     protected val fm: FragmentManager = activity.supportFragmentManager
 
     private var noConnectionFragment: Fragment? = null
@@ -99,10 +99,14 @@ abstract class ContentController protected constructor(private val activity: Mai
      */
     val currentTitle get() = when {
         noConnectionFragment != null -> null
+
         temporaryPage is CloudNotificationListFragment ->
             (temporaryPage as CloudNotificationListFragment).getTitle(activity)
+
         temporaryPage is AbstractWebViewFragment -> (temporaryPage as AbstractWebViewFragment).title
+
         temporaryPage != null -> null
+
         else -> fragmentForTitle?.title
     }
 
@@ -574,8 +578,8 @@ abstract class ContentController protected constructor(private val activity: Mai
         updateConnectionState()
     }
 
-    private fun findWidgetFragmentForUrl(url: String): WidgetListFragment? {
-        return collectWidgetFragments().firstOrNull { f -> f.displayPageUrl == url }
+    private fun findWidgetFragmentForUrl(url: String): WidgetListFragment? = collectWidgetFragments().firstOrNull { f ->
+        f.displayPageUrl == url
     }
 
     private fun collectWidgetFragments(): List<WidgetListFragment> {
@@ -587,13 +591,11 @@ abstract class ContentController protected constructor(private val activity: Mai
         return result
     }
 
-    private fun makeSitemapFragment(sitemap: Sitemap): WidgetListFragment {
-        return WidgetListFragment.withPage(sitemap.homepageLink, sitemap.label)
-    }
+    private fun makeSitemapFragment(sitemap: Sitemap): WidgetListFragment =
+        WidgetListFragment.withPage(sitemap.homepageLink, sitemap.label)
 
-    private fun makePageFragment(page: LinkedPage): WidgetListFragment {
-        return WidgetListFragment.withPage(page.link, page.title)
-    }
+    private fun makePageFragment(page: LinkedPage): WidgetListFragment =
+        WidgetListFragment.withPage(page.link, page.title)
 
     internal enum class FragmentUpdateReason {
         PAGE_ENTER,
@@ -715,11 +717,13 @@ abstract class ContentController protected constructor(private val activity: Mai
                         val preferencesIntent = Intent(activity, PreferencesActivity::class.java)
                         startActivity(preferencesIntent)
                     }
+
                     arguments?.getBoolean(KEY_WIFI_ENABLED) == true -> {
                         // If Wifi is enabled, primary button suggests retrying
                         ConnectionFactory.restartNetworkCheck()
                         activity?.recreate()
                     }
+
                     else -> {
                         // If Wifi is disabled, primary button suggests enabling Wifi
                         (activity as MainActivity?)?.enableWifiAndIndicateStartup()
@@ -735,6 +739,7 @@ abstract class ContentController protected constructor(private val activity: Mai
                             }
                         }
                     }
+
                     else -> {
                         // If connection issue, secondary button suggests opening status.openhab.org
                         "https://status.openhab.org".toUri().openInBrowser(requireContext())
@@ -759,6 +764,7 @@ abstract class ContentController protected constructor(private val activity: Mai
                         R.drawable.ic_home_search_outline_grey_340dp,
                         false
                     )
+
                     hasWifiEnabled -> buildArgs(
                         context.getString(R.string.no_remote_server),
                         R.string.try_again_button,
@@ -766,6 +772,7 @@ abstract class ContentController protected constructor(private val activity: Mai
                         R.drawable.ic_network_strength_off_outline_black_24dp,
                         false
                     )
+
                     else -> buildArgs(
                         context.getString(R.string.no_remote_server),
                         R.string.enable_wifi_button,
@@ -783,33 +790,33 @@ abstract class ContentController protected constructor(private val activity: Mai
         }
     }
 
-    internal abstract class StatusFragment : Fragment(), View.OnClickListener {
+    internal abstract class StatusFragment :
+        Fragment(),
+        View.OnClickListener {
         override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
             val arguments = requireArguments()
-            val view = inflater.inflate(R.layout.fragment_status, container, false)
+            val binding = FragmentStatusBinding.inflate(inflater, container, false)
 
-            val descriptionText = view.findViewById<TextView>(R.id.description)
-            descriptionText.text = arguments.getCharSequence(KEY_MESSAGE)
-            descriptionText.isVisible = !descriptionText.text.isNullOrEmpty()
+            binding.description.apply {
+                text = arguments.getCharSequence(KEY_MESSAGE)
+                isVisible = !text.isNullOrEmpty()
+            }
 
-            view.findViewById<View>(R.id.progress).isVisible = arguments.getBoolean(KEY_PROGRESS)
-
-            val watermark = view.findViewById<ImageView>(R.id.image)
+            binding.progress.isVisible = arguments.getBoolean(KEY_PROGRESS)
 
             @DrawableRes val drawableResId = arguments.getInt(KEY_DRAWABLE)
             if (drawableResId != 0) {
-                val drawable = ContextCompat.getDrawable(view.context, drawableResId)
+                val drawable = ContextCompat.getDrawable(binding.root.context, drawableResId)
                 drawable?.colorFilter = PorterDuffColorFilter(
-                    view.context.resolveThemedColor(R.attr.colorOnSurfaceVariant),
+                    binding.root.context.resolveThemedColor(R.attr.colorOnSurfaceVariant),
                     PorterDuff.Mode.SRC_IN
                 )
-                watermark.setImageDrawable(drawable)
+                binding.image.setImageDrawable(drawable)
             } else {
-                watermark.isVisible = false
+                binding.image.isVisible = false
             }
 
-            for ((id, key) in mapOf(R.id.button1 to KEY_BUTTON_1_TEXT, R.id.button2 to KEY_BUTTON_2_TEXT)) {
-                val button = view.findViewById<Button>(id)
+            for ((button, key) in mapOf(binding.button1 to KEY_BUTTON_1_TEXT, binding.button2 to KEY_BUTTON_2_TEXT)) {
                 val buttonTextResId = arguments.getInt(key)
                 if (buttonTextResId != 0) {
                     button.setText(buttonTextResId)
@@ -819,7 +826,7 @@ abstract class ContentController protected constructor(private val activity: Mai
                 }
             }
 
-            return view
+            return binding.root
         }
 
         companion object {
@@ -836,15 +843,13 @@ abstract class ContentController protected constructor(private val activity: Mai
                 @StringRes buttonTextResId: Int,
                 @DrawableRes drawableResId: Int,
                 showProgress: Boolean
-            ): Bundle {
-                return buildArgs(
-                    message,
-                    buttonTextResId,
-                    0,
-                    drawableResId,
-                    showProgress
-                )
-            }
+            ): Bundle = buildArgs(
+                message,
+                buttonTextResId,
+                0,
+                drawableResId,
+                showProgress
+            )
 
             internal fun buildArgs(
                 message: CharSequence?,
@@ -852,15 +857,13 @@ abstract class ContentController protected constructor(private val activity: Mai
                 @StringRes button2TextResId: Int,
                 @DrawableRes drawableResId: Int,
                 showProgress: Boolean
-            ): Bundle {
-                return bundleOf(
-                    KEY_MESSAGE to message,
-                    KEY_DRAWABLE to drawableResId,
-                    KEY_BUTTON_1_TEXT to button1TextResId,
-                    KEY_BUTTON_2_TEXT to button2TextResId,
-                    KEY_PROGRESS to showProgress
-                )
-            }
+            ): Bundle = bundleOf(
+                KEY_MESSAGE to message,
+                KEY_DRAWABLE to drawableResId,
+                KEY_BUTTON_1_TEXT to button1TextResId,
+                KEY_BUTTON_2_TEXT to button2TextResId,
+                KEY_PROGRESS to showProgress
+            )
         }
     }
 
@@ -884,7 +887,7 @@ abstract class ContentController protected constructor(private val activity: Mai
                 f is WidgetListFragment && f == fragmentForAppBarScroll -> f.recyclerView
                 else -> null
             }
-            activity.appBarLayout.setLiftOnScrollTargetView(scrollingTargetView)
+            activity.binding.appBar.root.setLiftOnScrollTargetView(scrollingTargetView)
         }
     }
 
@@ -901,23 +904,19 @@ abstract class ContentController protected constructor(private val activity: Mai
         private fun makeStateKeyForPage(page: LinkedPage) = "pageFragment-${page.link}"
 
         @AnimRes
-        internal fun determineEnterAnim(reason: FragmentUpdateReason): Int {
-            return when (reason) {
-                FragmentUpdateReason.PAGE_ENTER -> R.anim.slide_in_right
-                FragmentUpdateReason.TEMPORARY_PAGE -> R.anim.slide_in_bottom
-                FragmentUpdateReason.BACK_NAVIGATION -> R.anim.slide_in_left
-                else -> 0
-            }
+        internal fun determineEnterAnim(reason: FragmentUpdateReason): Int = when (reason) {
+            FragmentUpdateReason.PAGE_ENTER -> R.anim.slide_in_right
+            FragmentUpdateReason.TEMPORARY_PAGE -> R.anim.slide_in_bottom
+            FragmentUpdateReason.BACK_NAVIGATION -> R.anim.slide_in_left
+            else -> 0
         }
 
         @AnimRes
-        internal fun determineExitAnim(reason: FragmentUpdateReason): Int {
-            return when (reason) {
-                FragmentUpdateReason.PAGE_ENTER -> R.anim.slide_out_left
-                FragmentUpdateReason.TEMPORARY_PAGE -> R.anim.slide_out_bottom
-                FragmentUpdateReason.BACK_NAVIGATION -> R.anim.slide_out_right
-                else -> 0
-            }
+        internal fun determineExitAnim(reason: FragmentUpdateReason): Int = when (reason) {
+            FragmentUpdateReason.PAGE_ENTER -> R.anim.slide_out_left
+            FragmentUpdateReason.TEMPORARY_PAGE -> R.anim.slide_out_bottom
+            FragmentUpdateReason.BACK_NAVIGATION -> R.anim.slide_out_right
+            else -> 0
         }
     }
 }

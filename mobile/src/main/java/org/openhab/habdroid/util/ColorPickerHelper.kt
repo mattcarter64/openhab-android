@@ -15,9 +15,9 @@ package org.openhab.habdroid.util
 
 import android.graphics.Color
 import android.util.Log
-import com.flask.colorpicker.ColorPickerView
-import com.flask.colorpicker.OnColorChangedListener
-import com.flask.colorpicker.OnColorSelectedListener
+import com.chimbori.colorpicker.ColorPickerView
+import com.chimbori.colorpicker.OnColorChangedListener
+import com.chimbori.colorpicker.OnColorSelectedListener
 import com.google.android.material.slider.LabelFormatter
 import com.google.android.material.slider.Slider
 import java.util.Locale
@@ -80,9 +80,7 @@ class ColorPickerHelper(private val colorPicker: ColorPickerView, private val sl
         }
     }
 
-    override fun getFormattedValue(value: Float): String {
-        return "${value.toInt()} %"
-    }
+    override fun getFormattedValue(value: Float): String = "${value.toInt()} %"
 
     private fun setBrightnessIfNeeded() {
         if (slider.value.toInt() == 0) {

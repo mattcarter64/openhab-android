@@ -101,12 +101,14 @@ open class ItemUpdateWidget : AppWidgetProvider() {
                     setupWidget(context, data, id, AppWidgetManager.getInstance(context))
                     context.showToast(R.string.home_shortcut_success_pinning)
                 }
+
                 ACTION_UPDATE_WIDGET -> {
                     val data = getInfoForWidget(context, id)
                     if (data.command != null) {
                         BackgroundTasksManager.enqueueWidgetItemUpdateIfNeeded(context, data)
                     }
                 }
+
                 ACTION_EDIT_WIDGET -> {
                     Log.d(TAG, "Edit widget $id")
                     val openEditIntent = Intent(context, PreferencesActivity::class.java).apply {
@@ -365,9 +367,8 @@ open class ItemUpdateWidget : AppWidgetProvider() {
             views.setViewVisibility(R.id.progress_bar, View.GONE)
         }
 
-        fun getPrefsForWidget(context: Context, id: Int): SharedPreferences {
-            return context.getSharedPreferences(getPrefsNameForWidget(id), Context.MODE_PRIVATE)
-        }
+        fun getPrefsForWidget(context: Context, id: Int): SharedPreferences =
+            context.getSharedPreferences(getPrefsNameForWidget(id), Context.MODE_PRIVATE)
 
         private fun getPrefsNameForWidget(id: Int) = "widget-$id"
 
@@ -391,28 +392,27 @@ open class ItemUpdateWidget : AppWidgetProvider() {
         val icon: IconResource?,
         val showState: Boolean
     ) : Parcelable {
-        fun isValid(): Boolean {
-            return item.isNotEmpty() &&
-                label.isNotEmpty()
-        }
+        fun isValid(): Boolean = item.isNotEmpty() &&
+            label.isNotEmpty()
 
         /**
          * When comparing fields treat null as an empty string.
          */
-        fun nearlyEquals(other: Any?): Boolean {
-            return when (other) {
-                null -> false
-                !is ItemUpdateWidgetData -> false
-                this -> true
-                else -> {
-                    this.item == other.item &&
-                        this.command.orEmpty() == other.command.orEmpty() &&
-                        this.label == other.label &&
-                        this.widgetLabel.orEmpty() == other.widgetLabel.orEmpty() &&
-                        this.mappedState == other.mappedState &&
-                        this.icon == other.icon &&
-                        this.showState == other.showState
-                }
+        fun nearlyEquals(other: Any?): Boolean = when (other) {
+            null -> false
+
+            !is ItemUpdateWidgetData -> false
+
+            this -> true
+
+            else -> {
+                this.item == other.item &&
+                    this.command.orEmpty() == other.command.orEmpty() &&
+                    this.label == other.label &&
+                    this.widgetLabel.orEmpty() == other.widgetLabel.orEmpty() &&
+                    this.mappedState == other.mappedState &&
+                    this.icon == other.icon &&
+                    this.showState == other.showState
             }
         }
     }

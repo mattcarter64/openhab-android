@@ -33,15 +33,14 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.view.MenuProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -58,6 +57,8 @@ import org.openhab.habdroid.R
 import org.openhab.habdroid.core.connection.CloudConnection
 import org.openhab.habdroid.core.connection.ConnectionFactory
 import org.openhab.habdroid.core.connection.DemoConnection
+import org.openhab.habdroid.databinding.BottomSheetShortcutLabelBinding
+import org.openhab.habdroid.databinding.FragmentWebviewBinding
 import org.openhab.habdroid.model.ServerConfiguration
 import org.openhab.habdroid.ui.AbstractBaseActivity
 import org.openhab.habdroid.ui.ConnectionWebViewClient
@@ -69,12 +70,18 @@ import org.openhab.habdroid.util.getPrefs
 import org.openhab.habdroid.util.getSecretPrefs
 import org.openhab.habdroid.util.hasPermissions
 import org.openhab.habdroid.util.isDarkModeActive
+import org.openhab.habdroid.util.orDefaultIfEmpty
 import org.openhab.habdroid.util.toRelativeUrl
 
-abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateListener, CoroutineScope, MenuProvider {
+abstract class AbstractWebViewFragment :
+    Fragment(),
+    ConnectionFactory.UpdateListener,
+    CoroutineScope,
+    MenuProvider {
     private val job = Job()
     override val coroutineContext: CoroutineContext get() = Dispatchers.Main + job
-    private var webView: WebView? = null
+    private var binding: FragmentWebviewBinding? = null
+    private val webView get() = binding?.webview
     private var callback: ParentCallback? = null
     private val mainActivity get() = context as MainActivity?
     var isStackRoot = false
@@ -140,63 +147,69 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
-        return inflater.inflate(R.layout.fragment_webview, container, false)
+        val binding = FragmentWebviewBinding.inflate(inflater, container, false)
+        this.binding = binding
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        webView = view.findViewById(R.id.webview)
-        webView?.settings?.mediaPlaybackRequiresUserGesture = false
-        webView?.webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                Log.d(TAG, "progressCallback: progress = $newProgress")
-                if (newProgress == 100) {
-                    updateViewVisibility(null, null)
-                } else {
-                    updateViewVisibility(null, newProgress)
-                }
+        webView?.apply {
+            // Make sure not to pass window insets into the WebView, we already handle them in the activity
+            ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
+                WindowInsetsCompat.CONSUMED
             }
 
-            override fun onPermissionRequest(request: PermissionRequest) {
-                val requestedPerms = request.resources
-                    .map { res -> PERMISSION_REQUEST_MAPPING.get(res) }
-                    .filterNotNull()
-                    .flatten()
-                    .toTypedArray()
-
-                if (requestedPerms.isEmpty()) {
-                    Log.w(TAG, "Requested unknown permissions ${request.resources}")
-                    request.deny()
-                } else if (requireContext().hasPermissions(requestedPerms)) {
-                    request.grant(permsToWebResources(requestedPerms))
-                } else {
-                    (activity as AbstractBaseActivity).showSnackbar(
-                        SNACKBAR_TAG_WEBVIEW_PERMISSIONS,
-                        R.string.webview_snackbar_permissions_missing,
-                        Snackbar.LENGTH_INDEFINITE,
-                        R.string.settings_background_tasks_permission_allow,
-                        { request.deny() }
-                    ) {
-                        pendingPermissionRequests[requestedPerms.toSet()] = request
-                        permissionRequester.launch(requestedPerms)
+            settings.mediaPlaybackRequiresUserGesture = false
+            webChromeClient = object : WebChromeClient() {
+                override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                    Log.d(TAG, "progressCallback: progress = $newProgress")
+                    if (newProgress == 100) {
+                        updateViewVisibility(null, null)
+                    } else {
+                        updateViewVisibility(null, newProgress)
                     }
                 }
-            }
 
-            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
-                Log.d(TAG, "${message.message()} -- From line ${message.lineNumber()} of ${message.sourceId()}")
-                return true
+                override fun onPermissionRequest(request: PermissionRequest) {
+                    val requestedPerms = request.resources
+                        .map { res -> PERMISSION_REQUEST_MAPPING.get(res) }
+                        .filterNotNull()
+                        .flatten()
+                        .toTypedArray()
+
+                    if (requestedPerms.isEmpty()) {
+                        Log.w(TAG, "Requested unknown permissions ${request.resources}")
+                        request.deny()
+                    } else if (requireContext().hasPermissions(requestedPerms)) {
+                        request.grant(permsToWebResources(requestedPerms))
+                    } else {
+                        (activity as AbstractBaseActivity).showSnackbar(
+                            SNACKBAR_TAG_WEBVIEW_PERMISSIONS,
+                            R.string.webview_snackbar_permissions_missing,
+                            Snackbar.LENGTH_INDEFINITE,
+                            R.string.settings_background_tasks_permission_allow,
+                            { request.deny() }
+                        ) {
+                            pendingPermissionRequests[requestedPerms.toSet()] = request
+                            permissionRequester.launch(requestedPerms)
+                        }
+                    }
+                }
+
+                override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                    Log.d(TAG, "${message.message()} -- From line ${message.lineNumber()} of ${message.sourceId()}")
+                    return true
+                }
             }
         }
 
         isStackRoot = requireArguments().getBoolean(KEY_IS_STACK_ROOT)
 
-        val retryButton = view.findViewById<Button>(R.id.retry_button)
-        retryButton.setOnClickListener {
+        binding?.retryButton?.setOnClickListener {
             Log.d(TAG, "Retry button clicked, reload website")
             loadWebsite()
         }
-        val error = view.findViewById<TextView>(R.id.empty_message)
-        error.text = getString(errorMessageRes)
+        binding?.emptyMessage?.text = getString(errorMessageRes)
 
         val subpage = requireArguments().getString(KEY_SUBPAGE)
         when {
@@ -206,10 +219,12 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
                 webView?.restoreState(savedInstanceState)
                 loadWebsite(savedUrl)
             }
+
             subpage != null -> {
                 Log.d(TAG, "Load subpage: $subpage")
                 loadWebsite(subpage)
             }
+
             else -> {
                 Log.d(TAG, "Load default website")
                 loadWebsite()
@@ -220,7 +235,7 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
     override fun onDestroyView() {
         super.onDestroyView()
         webView?.destroy()
-        webView = null
+        binding = null
     }
 
     override fun onResume() {
@@ -252,14 +267,13 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         }
     }
 
-    override fun onMenuItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.webview_add_shortcut -> {
-                pinShortcut()
-                true
-            }
-            else -> false
+    override fun onMenuItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        R.id.webview_add_shortcut -> {
+            pinShortcut()
+            true
         }
+
+        else -> false
     }
 
     fun setCallback(callback: ParentCallback) {
@@ -315,9 +329,7 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         return false
     }
 
-    fun canGoBack(): Boolean {
-        return webView?.canGoBack() == true
-    }
+    fun canGoBack(): Boolean = webView?.canGoBack() == true
 
     private fun loadWebsite(urlToLoad: String = this.urlToLoad) {
         val conn = ConnectionFactory.activeUsableConnection?.connection
@@ -371,9 +383,7 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         webView.loadUrl(url.toString())
     }
 
-    open fun modifyUrl(orig: HttpUrl): HttpUrl {
-        return orig
-    }
+    open fun modifyUrl(orig: HttpUrl): HttpUrl = orig
 
     /**
      * Change the visibility of the progress and error indicators and the WebView.
@@ -383,9 +393,9 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
     private fun updateViewVisibility(error: Boolean?, loadingProgress: Int?) {
         error?.let {
             webView?.isVisible = !error
-            view?.findViewById<View>(android.R.id.empty)?.isVisible = error
+            binding?.empty?.isVisible = error
         }
-        view?.findViewById<ProgressBar>(R.id.progress)?.apply {
+        binding?.progress?.apply {
             isVisible = loadingProgress != null
             progress = loadingProgress ?: 0
         }
@@ -435,10 +445,8 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
         }
     }
 
-    class OHAppInterfaceWithPin(
-        context: Context,
-        private val fragment: AbstractWebViewFragment
-    ) : OHAppInterface(context, fragment) {
+    class OHAppInterfaceWithPin(context: Context, private val fragment: AbstractWebViewFragment) :
+        OHAppInterface(context, fragment) {
         @JavascriptInterface
         fun pinToHome() {
             Log.d(TAG, "pinToHome()")
@@ -482,35 +490,36 @@ abstract class AbstractWebViewFragment : Fragment(), ConnectionFactory.UpdateLis
     class ShortcutTitleBottomSheet : BottomSheetDialogFragment() {
         private val parent get() = parentFragment as AbstractWebViewFragment
         private lateinit var origInfo: ShortcutInfoCompat
-        private lateinit var editor: EditText
+        private lateinit var binding: BottomSheetShortcutLabelBinding
 
         override fun onCreate(savedInstanceState: Bundle?) {
             super.onCreate(savedInstanceState)
             origInfo = parent.shortcutInfo
         }
 
-        override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-            val view = inflater.inflate(R.layout.bottom_sheet_shortcut_label, container, false)
-            editor = view.findViewById(R.id.editor)
-            return view
+        override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+            binding = BottomSheetShortcutLabelBinding.inflate(inflater, container, false)
+            return binding.root
         }
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             super.onViewCreated(view, savedInstanceState)
-            editor.setText(origInfo.shortLabel, TextView.BufferType.EDITABLE)
-            editor.requestFocus()
+            binding.editor.apply {
+                setText(origInfo.shortLabel, TextView.BufferType.EDITABLE)
+                requestFocus()
+            }
 
-            view.findViewById<View>(R.id.cancel_button).setOnClickListener {
+            binding.cancelButton.setOnClickListener {
                 dismissAllowingStateLoss()
             }
-            view.findViewById<View>(R.id.save).setOnClickListener {
+            binding.save.setOnClickListener {
                 save()
                 dismissAllowingStateLoss()
             }
         }
 
         private fun save() {
-            val label = if (editor.text.isNullOrEmpty()) " " else editor.text
+            val label = binding.editor.text.toString().orDefaultIfEmpty(" ")
             val newInfo = ShortcutInfoCompat.Builder(origInfo)
                 .setShortLabel(label)
                 .build()

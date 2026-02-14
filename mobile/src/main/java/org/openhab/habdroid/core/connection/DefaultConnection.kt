@@ -19,7 +19,9 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import org.openhab.habdroid.model.ServerPath
@@ -42,25 +44,29 @@ open class DefaultConnection : AbstractConnection {
         Log.d(TAG, "Checking reachability of $baseUrl (via $network)")
         val url = baseUrl.toHttpUrl()
         val s = createConnectedSocket(InetSocketAddress(url.host, url.port), network)
-        s?.close()
+        withContext(Dispatchers.IO) {
+            s?.close()
+        }
         return s != null
     }
 
     private suspend fun createConnectedSocket(socketAddress: InetSocketAddress, network: Network?): Socket? {
-        val s = Socket()
-        s.bindToNetworkIfPossible(network)
-
         var retries = 0
         while (retries < 10) {
             try {
-                s.connect(socketAddress, 1000)
-                Log.d(TAG, "Socket connected (attempt  $retries)")
+                val s = withContext(Dispatchers.IO) {
+                    Socket().apply {
+                        bindToNetworkIfPossible(network)
+                        connect(socketAddress, 1000)
+                    }
+                }
+                Log.d(TAG, "Socket connected (attempt $retries)")
                 return s
-            } catch (e: SocketTimeoutException) {
+            } catch (_: SocketTimeoutException) {
                 Log.d(TAG, "Socket timeout after $retries retries")
                 retries += 5
             } catch (e: IOException) {
-                Log.d(TAG, "Socket creation failed (attempt  $retries)")
+                Log.d(TAG, "Socket creation failed (attempt  $retries): ${e.message}")
                 delay(200)
             }
 

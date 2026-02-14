@@ -22,6 +22,7 @@ import androidx.core.content.edit
 import androidx.core.os.bundleOf
 import com.google.android.material.button.MaterialButton
 import org.openhab.habdroid.R
+import org.openhab.habdroid.databinding.TaskerItemPickerAppbarExtensionBinding
 import org.openhab.habdroid.model.Item
 import org.openhab.habdroid.util.PrefKeys
 import org.openhab.habdroid.util.SuggestedCommandsFactory
@@ -35,16 +36,16 @@ class TaskerItemPickerActivity(
     override var hintMessageId: Int = R.string.settings_tasker_plugin_summary,
     override var hintButtonMessageId: Int = R.string.turn_on,
     override var hintIconId: Int = R.drawable.ic_connection_error
-) : AbstractItemPickerActivity(), View.OnClickListener {
+) : AbstractItemPickerActivity(),
+    View.OnClickListener {
     private var relevantVars: Array<String>? = null
-    private lateinit var commandButton: MaterialButton
-    private lateinit var updateButton: MaterialButton
+    private lateinit var toolbarExtensionBinding: TaskerItemPickerAppbarExtensionBinding
     override val forItemCommandOnly: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        retryButton.setOnClickListener {
+        binding.retryButton.setOnClickListener {
             if (needToShowHint) {
                 getPrefs().edit {
                     putBoolean(PrefKeys.TASKER_PLUGIN_ENABLED, true)
@@ -70,16 +71,15 @@ class TaskerItemPickerActivity(
     override fun inflateToolbarExtension(stub: ViewStub): View? {
         stub.layoutResource = R.layout.tasker_item_picker_appbar_extension
         val view = stub.inflate()
+        toolbarExtensionBinding = TaskerItemPickerAppbarExtensionBinding.bind(view)
 
-        commandButton = findViewById(R.id.button_item_command)
-        updateButton = findViewById(R.id.button_item_update)
-        commandButton.setOnClickListener(this)
-        updateButton.setOnClickListener(this)
+        toolbarExtensionBinding.buttonItemCommand.setOnClickListener(this)
+        toolbarExtensionBinding.buttonItemUpdate.setOnClickListener(this)
 
         if (intent.getBundleExtra(TaskerIntent.EXTRA_BUNDLE)?.getBoolean(EXTRA_ITEM_AS_COMMAND, true) == false) {
-            updateButton.isChecked = true
+            toolbarExtensionBinding.buttonItemUpdate.isChecked = true
         } else {
-            commandButton.isChecked = true
+            toolbarExtensionBinding.buttonItemCommand.isChecked = true
         }
 
         return view
@@ -99,7 +99,7 @@ class TaskerItemPickerActivity(
             return
         }
 
-        var asCommand = commandButton.isChecked
+        var asCommand = toolbarExtensionBinding.buttonItemCommand.isChecked
 
         if (asCommand && item.type == Item.Type.Contact) {
             asCommand = false
@@ -152,9 +152,7 @@ class TaskerItemPickerActivity(
         const val RESULT_CODE_PLUGIN_DISABLED = TaskerPlugin.Setting.RESULT_CODE_FAILED_PLUGIN_FIRST
         const val RESULT_CODE_NO_CONNECTION = TaskerPlugin.Setting.RESULT_CODE_FAILED_PLUGIN_FIRST + 1
 
-        fun getResultCodeForHttpFailure(httpCode: Int): Int {
-            return 1000 + httpCode
-        }
+        fun getResultCodeForHttpFailure(httpCode: Int): Int = 1000 + httpCode
 
         const val VAR_HTTP_CODE = "%httpcode"
         const val EXTRA_ITEM_AS_COMMAND = "asCommand"

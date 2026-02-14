@@ -22,9 +22,7 @@ import androidx.preference.PreferenceViewHolder
 import org.openhab.habdroid.R
 import org.openhab.habdroid.ui.setupHelpIcon
 
-class InfoPreference(context: Context, attrs: AttributeSet) :
-    Preference(context, attrs) {
-    private var helpIcon: ImageView? = null
+class InfoPreference(context: Context, attrs: AttributeSet) : Preference(context, attrs) {
     private val infoUrl: String?
 
     init {
@@ -44,10 +42,10 @@ class InfoPreference(context: Context, attrs: AttributeSet) :
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
-        helpIcon = holder.itemView.findViewById(R.id.help_icon)
+        val helpIcon = holder.itemView.findViewById<ImageView>(R.id.help_icon)
         infoUrl?.let {
-            helpIcon?.setupHelpIcon(it, R.string.click_here_for_more_information)
+            helpIcon.setupHelpIcon(it, R.string.click_here_for_more_information)
         }
-        helpIcon?.isVisible = infoUrl != null
+        helpIcon.isVisible = infoUrl != null
     }
 }

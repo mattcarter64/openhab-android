@@ -155,11 +155,14 @@ abstract class AbstractTileService : TileService() {
         var updateSubtitleLaterAgain = false
         val statusMessage = when (lastWorkInfoState) {
             WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> getString(R.string.item_update_short_status_waiting)
+
             WorkInfo.State.RUNNING -> getString(R.string.item_update_short_status_sending)
+
             WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> {
                 updateSubtitleLaterAgain = true
                 getString(R.string.item_update_short_status_failed)
             }
+
             WorkInfo.State.SUCCEEDED -> {
                 updateSubtitleLaterAgain = true
                 ItemUpdateWorker.getShortItemUpdateSuccessMessage(
@@ -167,6 +170,7 @@ abstract class AbstractTileService : TileService() {
                     lastInfo?.outputData?.getString(ItemUpdateWorker.OUTPUT_DATA_SENT_VALUE).orEmpty()
                 )
             }
+
             null -> ""
         }
         qsTile?.apply {
@@ -278,13 +282,11 @@ data class TileData(
     val icon: String,
     val requireUnlock: Boolean
 ) : Parcelable {
-    fun isValid(): Boolean {
-        return item.isNotEmpty() &&
-            label.isNotEmpty() &&
-            tileLabel.isNotEmpty() &&
-            mappedState.isNotEmpty() &&
-            icon.isNotEmpty()
-    }
+    fun isValid(): Boolean = item.isNotEmpty() &&
+        label.isNotEmpty() &&
+        tileLabel.isNotEmpty() &&
+        mappedState.isNotEmpty() &&
+        icon.isNotEmpty()
 }
 
 @RequiresApi(Build.VERSION_CODES.N)

@@ -14,7 +14,7 @@
 package org.openhab.habdroid.background
 
 import android.content.Context
-import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
 import android.os.Parcelable
 import android.util.Log
 import android.widget.Toast
@@ -31,7 +31,6 @@ import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
-import kotlinx.coroutines.runBlocking
 import kotlinx.parcelize.Parcelize
 import org.openhab.habdroid.R
 import org.openhab.habdroid.background.NotificationUpdateObserver.Companion.NOTIFICATION_ID_BACKGROUND_WORK_RUNNING
@@ -133,24 +132,35 @@ class ItemUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWo
 
     private fun mapValueAccordingToItemTypeAndValue(value: ValueWithInfo, item: Item) = when {
         value.value == "TOGGLE" && item.canBeToggled() -> determineOppositeState(item)
+
         value.type == ValueType.Timestamp && item.isOfTypeOrGroupType(Item.Type.DateTime) && value.value != "UNDEF" ->
             convertToTimestamp(value)
+
         value.type == ValueType.MapUndefToOffForSwitchItems && item.isOfTypeOrGroupType(Item.Type.Switch) ->
             if (value.value == "UNDEF") "OFF" else "ON"
+
         else -> value.value
     }
 
-    private fun determineOppositeState(item: Item): String {
-        return if (item.isOfTypeOrGroupType(Item.Type.Rollershutter) || item.isOfTypeOrGroupType(Item.Type.Dimmer)) {
+    private fun determineOppositeState(item: Item) = when {
+        item.isOfTypeOrGroupType(Item.Type.Rollershutter) || item.isOfTypeOrGroupType(Item.Type.Dimmer) -> {
             // If shutter is (partially) closed, open it, else close it
             if (item.state?.asNumber?.value == 0F) "100" else "0"
-        } else if (item.isOfTypeOrGroupType(Item.Type.Contact)) {
+        }
+
+        item.isOfTypeOrGroupType(Item.Type.Contact) -> {
             if (item.state?.asString == "OPEN") "CLOSED" else "OPEN"
-        } else if (item.isOfTypeOrGroupType(Item.Type.Player)) {
+        }
+
+        item.isOfTypeOrGroupType(Item.Type.Player) -> {
             if (item.state?.asString == "PAUSE") "PLAY" else "PAUSE"
-        } else if (item.state?.asBoolean == true) {
+        }
+
+        item.state?.asBoolean == true -> {
             "OFF"
-        } else {
+        }
+
+        else -> {
             "ON"
         }
     }
@@ -168,7 +178,8 @@ class ItemUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWo
         hasConnection: Boolean,
         httpCode: Int
     ): Result {
-        return if (runAttemptCount <= if (isImportant) 3 else 10) {
+        val maxRunCount = if (isImportant) 3 else 10
+        return if (runAttemptCount <= maxRunCount) {
             if (showToast) {
                 applicationContext.showToast(R.string.item_update_error_no_connection_retry, Toast.LENGTH_LONG)
             }
@@ -211,7 +222,7 @@ class ItemUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWo
         )
     }
 
-    private fun handleVoiceCommand(context: Context, connection: Connection, value: ValueWithInfo): Result {
+    private suspend fun handleVoiceCommand(context: Context, connection: Connection, value: ValueWithInfo): Result {
         Log.d(TAG, "handleVoiceCommand(value = $value")
         val headers = mapOf("Accept-Language" to Locale.getDefault().language)
         var voiceCommand = value.value
@@ -221,21 +232,17 @@ class ItemUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWo
         }
         val result = try {
             Log.d(TAG, "Try to send update to voice interpreters endpoint")
-            runBlocking {
-                connection.httpClient
-                    .post("rest/voice/interpreters", voiceCommand, headers = headers)
-                    .asStatus()
-            }
+            connection.httpClient
+                .post("rest/voice/interpreters", voiceCommand, headers = headers)
+                .asStatus()
         } catch (e: HttpClient.HttpException) {
             Log.d(TAG, "Error sending update to voice interpreters endpoint", e)
             if (e.statusCode == 404) {
                 try {
                     Log.d(TAG, "Voice interpreter endpoint returned 404, falling back to item")
-                    runBlocking {
-                        connection.httpClient
-                            .post("rest/items/VoiceCommand", voiceCommand)
-                            .asStatus()
-                    }
+                    connection.httpClient
+                        .post("rest/items/VoiceCommand", voiceCommand)
+                        .asStatus()
                 } catch (e: HttpClient.HttpException) {
                     Log.d(TAG, "Error sending update to voice item", e)
                     return Result.failure(buildOutputData(true, e.statusCode))
@@ -266,11 +273,15 @@ class ItemUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWo
             .addAction(R.drawable.ic_clear_grey_24dp, context.getString(android.R.string.cancel), cancelIntent)
             .build()
 
-        return ForegroundInfo(NOTIFICATION_ID_BACKGROUND_WORK_RUNNING, notification, FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        return ForegroundInfo(
+            NOTIFICATION_ID_BACKGROUND_WORK_RUNNING,
+            notification,
+            FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
+        )
     }
 
-    private fun buildOutputData(hasConnection: Boolean, httpStatus: Int, sentValue: String? = null): Data {
-        return Data.Builder()
+    private fun buildOutputData(hasConnection: Boolean, httpStatus: Int, sentValue: String? = null): Data =
+        Data.Builder()
             .putBoolean(OUTPUT_DATA_HAS_CONNECTION, hasConnection)
             .putInt(OUTPUT_DATA_HTTP_STATUS, httpStatus)
             .putString(OUTPUT_DATA_ITEM_NAME, inputData.getString(INPUT_DATA_ITEM_NAME))
@@ -284,7 +295,6 @@ class ItemUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWo
             .putBoolean(OUTPUT_DATA_PRIMARY_SERVER, inputData.getBoolean(INPUT_DATA_PRIMARY_SERVER, false))
             .putLong(OUTPUT_DATA_TIMESTAMP, System.currentTimeMillis())
             .build()
-    }
 
     private fun getItemUpdateSuccessMessage(
         context: Context,
@@ -346,18 +356,16 @@ class ItemUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWo
             asCommand: Boolean,
             isImportant: Boolean,
             primaryServer: Boolean
-        ): Data {
-            return Data.Builder()
-                .putString(INPUT_DATA_ITEM_NAME, itemName)
-                .putString(INPUT_DATA_LABEL, label)
-                .putValueWithInfo(INPUT_DATA_VALUE, value)
-                .putBoolean(INPUT_DATA_SHOW_TOAST, showToast)
-                .putString(INPUT_DATA_TASKER_INTENT, taskerIntent)
-                .putBoolean(INPUT_DATA_AS_COMMAND, asCommand)
-                .putBoolean(INPUT_DATA_IS_IMPORTANT, isImportant)
-                .putBoolean(INPUT_DATA_PRIMARY_SERVER, primaryServer)
-                .build()
-        }
+        ) = Data.Builder()
+            .putString(INPUT_DATA_ITEM_NAME, itemName)
+            .putString(INPUT_DATA_LABEL, label)
+            .putValueWithInfo(INPUT_DATA_VALUE, value)
+            .putBoolean(INPUT_DATA_SHOW_TOAST, showToast)
+            .putString(INPUT_DATA_TASKER_INTENT, taskerIntent)
+            .putBoolean(INPUT_DATA_AS_COMMAND, asCommand)
+            .putBoolean(INPUT_DATA_IS_IMPORTANT, isImportant)
+            .putBoolean(INPUT_DATA_PRIMARY_SERVER, primaryServer)
+            .build()
 
         fun getShortItemUpdateSuccessMessage(context: Context, value: String): String = when (value) {
             "ON" -> context.getString(R.string.item_update_short_success_message_on)
@@ -404,6 +412,9 @@ fun Data.Builder.putValueWithInfo(key: String, value: ItemUpdateWorker.ValueWith
 }
 
 fun Data.getValueWithInfo(key: String): ItemUpdateWorker.ValueWithInfo? {
-    val array = getStringArray(key) ?: return null
-    return ItemUpdateWorker.ValueWithInfo(array[0], array[1], ItemUpdateWorker.ValueType.valueOf(array[2]))
+    @Suppress("UNCHECKED_CAST")
+    val array = this.keyValueMap[key] as? Array<String?> ?: return null
+    val value = array[0] ?: return null
+    val type = array[2] ?: return null
+    return ItemUpdateWorker.ValueWithInfo(value, array[1], ItemUpdateWorker.ValueType.valueOf(type))
 }

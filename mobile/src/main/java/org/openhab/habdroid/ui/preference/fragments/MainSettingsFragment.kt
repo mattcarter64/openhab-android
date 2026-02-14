@@ -67,7 +67,9 @@ import org.openhab.habdroid.util.isInstalled
 import org.openhab.habdroid.util.isTaskerPluginEnabled
 import org.openhab.habdroid.util.parcelable
 
-class MainSettingsFragment : AbstractSettingsFragment(), ConnectionFactory.UpdateListener {
+class MainSettingsFragment :
+    AbstractSettingsFragment(),
+    ConnectionFactory.UpdateListener {
     override val titleResId: Int @StringRes get() = R.string.action_settings
 
     private var notificationPollingPref: NotificationPollingPreference? = null
@@ -384,9 +386,12 @@ class MainSettingsFragment : AbstractSettingsFragment(), ConnectionFactory.Updat
         pref.summary = getString(
             when {
                 !locked -> R.string.settings_screen_lock_nolock_summary
+
                 value == getString(R.string.settings_screen_lock_on_value) -> R.string.settings_screen_lock_on_summary
+
                 value == getString(R.string.settings_screen_lock_kiosk_value) ->
                     R.string.settings_screen_lock_kiosk_summary
+
                 else -> R.string.settings_screen_lock_off_summary
             }
         )

@@ -65,10 +65,9 @@ class WidgetImageView(context: Context, attrs: AttributeSet?, private val imageV
     }
 
     @SuppressLint("CustomViewStyleable")
-    class InternalImageView(
-        context: Context,
-        attrs: AttributeSet?
-    ) : AppCompatImageView(context, attrs), WidgetImageViewIntf {
+    class InternalImageView(context: Context, attrs: AttributeSet?) :
+        AppCompatImageView(context, attrs),
+        WidgetImageViewIntf {
         private var scope: CoroutineScope? = null
         var loadProgressCallback: ((loading: Boolean) -> Unit)? = null
         private val fallback: Drawable?
@@ -130,7 +129,7 @@ class WidgetImageView(context: Context, attrs: AttributeSet?, private val imageV
             }
 
             if (targetImageSize == 0) {
-                pendingRequest = PendingHttpRequest(client, actualUrl, timeoutMillis, forceLoad)
+                pendingRequest = PendingRequest.Http(client, actualUrl, timeoutMillis, forceLoad)
             } else {
                 doLoad(client, actualUrl, timeoutMillis, forceLoad)
             }
@@ -147,7 +146,7 @@ class WidgetImageView(context: Context, attrs: AttributeSet?, private val imageV
             }
 
             if (targetImageSize == 0) {
-                pendingRequest = PendingBase64Request(bitmap)
+                pendingRequest = PendingRequest.Base64(bitmap)
             } else {
                 applyLoadedBitmap(bitmap)
             }
@@ -157,20 +156,14 @@ class WidgetImageView(context: Context, attrs: AttributeSet?, private val imageV
             super.onLayout(changed, left, top, right, bottom)
             targetImageSize = right - left - paddingLeft - paddingRight
             pendingRequest?.let { r ->
-                when (r) {
-                    is PendingHttpRequest -> {
-                        pendingLoadJob = scope?.launch {
-                            doLoad(r.client, r.url, r.timeoutMillis, r.forceLoad)
-                        }
+                pendingLoadJob = scope?.launch {
+                    when (r) {
+                        is PendingRequest.Http -> doLoad(r.client, r.url, r.timeoutMillis, r.forceLoad)
+                        is PendingRequest.Base64 -> applyLoadedBitmap(r.bitmap)
                     }
-                    is PendingBase64Request -> {
-                        pendingLoadJob = scope?.launch {
-                            applyLoadedBitmap(r.bitmap)
-                        }
-                    }
+                    pendingRequest = null
                 }
             }
-            pendingRequest = null
         }
 
         override fun setImageResource(resId: Int) {
@@ -237,10 +230,12 @@ class WidgetImageView(context: Context, attrs: AttributeSet?, private val imageV
                     adjustViewBounds = false
                     scaleType = ScaleType.CENTER_INSIDE
                 }
+
                 ImageScalingType.ScaleToFit -> {
                     adjustViewBounds = false
                     scaleType = ScaleType.FIT_CENTER
                 }
+
                 ImageScalingType.ScaleToFitWithViewAdjustment,
                 ImageScalingType.ScaleToFitWithViewAdjustmentDownscaleOnly -> {
                     adjustViewBounds = true
@@ -375,6 +370,7 @@ class WidgetImageView(context: Context, attrs: AttributeSet?, private val imageV
                         val conversionPolicy = when (originalScaleType ?: scaleType) {
                             ScaleType.FIT_CENTER, ScaleType.FIT_START,
                             ScaleType.FIT_END, ScaleType.FIT_XY -> ImageConversionPolicy.PreferTargetSize
+
                             else -> ImageConversionPolicy.PreferSourceSize
                         }
                         val fallbackColor = context.getIconFallbackColor(IconBackground.APP_THEME)
@@ -400,34 +396,23 @@ class WidgetImageView(context: Context, attrs: AttributeSet?, private val imageV
                 job?.cancel()
             }
 
-            fun hasCompleted(): Boolean {
-                return job?.isCompleted == true
-            }
+            fun hasCompleted(): Boolean = job?.isCompleted == true
 
-            fun isActive(): Boolean {
-                return job?.isActive == true
-            }
+            fun isActive(): Boolean = job?.isActive == true
 
-            fun statelessUrlEquals(url: HttpUrl): Boolean {
-                return this.url.newBuilder().removeAllQueryParameters("state").build() ==
+            fun statelessUrlEquals(url: HttpUrl): Boolean =
+                this.url.newBuilder().removeAllQueryParameters("state").build() ==
                     url.newBuilder().removeAllQueryParameters("state").build()
-            }
 
-            override fun toString(): String {
-                return "HttpImageRequest(url=$url, job=$job)"
-            }
+            override fun toString() = "HttpImageRequest(url=$url, job=$job)"
         }
 
-        abstract class PendingRequest
+        sealed class PendingRequest {
+            data class Http(val client: HttpClient, val url: HttpUrl, val timeoutMillis: Long, val forceLoad: Boolean) :
+                PendingRequest()
 
-        data class PendingHttpRequest(
-            val client: HttpClient,
-            val url: HttpUrl,
-            val timeoutMillis: Long,
-            val forceLoad: Boolean
-        ) : PendingRequest()
-
-        data class PendingBase64Request(val bitmap: Bitmap) : PendingRequest()
+            data class Base64(val bitmap: Bitmap) : PendingRequest()
+        }
     }
 
     enum class ImageScalingType {

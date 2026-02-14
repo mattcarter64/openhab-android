@@ -61,6 +61,7 @@ internal class NotificationUpdateObserver(context: Context) : Observer<List<Work
                         val existing = latestInfoByTag[tag]
                         when (existing?.state) {
                             null -> latestInfoByTag[tag] = info
+
                             WorkInfo.State.SUCCEEDED, WorkInfo.State.FAILED -> {
                                 val ts = info.outputData.getLong(ItemUpdateWorker.OUTPUT_DATA_TIMESTAMP, 0)
                                 val existingTs = existing.outputData.getLong(ItemUpdateWorker.OUTPUT_DATA_TIMESTAMP, 0)
@@ -68,6 +69,7 @@ internal class NotificationUpdateObserver(context: Context) : Observer<List<Work
                                     latestInfoByTag[tag] = info
                                 }
                             }
+
                             else -> {}
                         }
                     }
@@ -167,10 +169,8 @@ internal class NotificationUpdateObserver(context: Context) : Observer<List<Work
     companion object {
         private const val NOTIFICATION_ID_BACKGROUND_WORK = 1000
         const val NOTIFICATION_ID_BACKGROUND_WORK_RUNNING = 1001
-        const val NOTIFICATION_ID_BROADCAST_RECEIVER = 1002
         const val CHANNEL_ID_BACKGROUND = "background"
         const val CHANNEL_ID_BACKGROUND_ERROR = "backgroundError"
-        const val CHANNEL_ID_BACKGROUND_FOREGROUND_SERVICE = "backgroundBroadcastReceiver"
         const val CHANNEL_ID_MESSAGE_DEFAULT = "default"
         const val CHANNEL_GROUP_MESSAGES = "messages"
 
@@ -228,20 +228,6 @@ internal class NotificationUpdateObserver(context: Context) : Observer<List<Work
 
             with(
                 NotificationChannel(
-                    CHANNEL_ID_BACKGROUND_FOREGROUND_SERVICE,
-                    context.getString(R.string.notification_channel_background_foreground_service),
-                    NotificationManager.IMPORTANCE_NONE
-                )
-            ) {
-                setShowBadge(false)
-                enableVibration(false)
-                enableLights(false)
-                description = context.getString(R.string.notification_channel_background_foreground_service_description)
-                nm.createNotificationChannel(this)
-            }
-
-            with(
-                NotificationChannel(
                     CHANNEL_ID_BACKGROUND_ERROR,
                     context.getString(R.string.notification_channel_background_error),
                     NotificationManager.IMPORTANCE_DEFAULT
@@ -256,14 +242,13 @@ internal class NotificationUpdateObserver(context: Context) : Observer<List<Work
             }
         }
 
-        private fun createProgressNotification(context: Context, @StringRes messageResId: Int): Notification {
-            return createBaseBuilder(context, CHANNEL_ID_BACKGROUND)
+        private fun createProgressNotification(context: Context, @StringRes messageResId: Int) =
+            createBaseBuilder(context, CHANNEL_ID_BACKGROUND)
                 .setContentTitle(context.getString(messageResId))
                 .setCategory(NotificationCompat.CATEGORY_PROGRESS)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_MIN)
                 .build()
-        }
 
         private fun createErrorNotification(
             context: Context,

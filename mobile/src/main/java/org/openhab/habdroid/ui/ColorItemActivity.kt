@@ -15,36 +15,40 @@ package org.openhab.habdroid.ui
 
 import android.os.Bundle
 import android.view.MenuItem
-import com.flask.colorpicker.ColorPickerView
-import com.google.android.material.slider.Slider
 import org.openhab.habdroid.R
 import org.openhab.habdroid.core.connection.ConnectionFactory
+import org.openhab.habdroid.databinding.ActivityColorPickerBinding
 import org.openhab.habdroid.model.Item
 import org.openhab.habdroid.util.ColorPickerHelper
 import org.openhab.habdroid.util.orDefaultIfEmpty
 import org.openhab.habdroid.util.parcelable
 
 class ColorItemActivity : AbstractBaseActivity() {
+    private lateinit var binding: ActivityColorPickerBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        setContentView(R.layout.activity_color_picker)
 
         val boundItem = intent.extras?.parcelable<Item>(EXTRA_ITEM)
 
         supportActionBar?.title = boundItem?.label.orDefaultIfEmpty(getString(R.string.widget_type_color))
 
-        val colorPicker = findViewById<ColorPickerView>(R.id.picker)
-        val slider = findViewById<Slider>(R.id.brightness_slider)
-        val pickerHelper = ColorPickerHelper(colorPicker, slider)
+        val pickerHelper = ColorPickerHelper(binding.picker, binding.brightnessSlider)
         pickerHelper.attach(boundItem, this, ConnectionFactory.primaryUsableConnection?.connection)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return if (item.itemId == android.R.id.home) {
+    override fun inflateBinding(): CommonBinding {
+        binding = ActivityColorPickerBinding.inflate(layoutInflater)
+        return CommonBinding(binding.root, binding.appBar, binding.coordinator, binding.activityContent)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        android.R.id.home -> {
             finish()
             true
-        } else {
+        }
+
+        else -> {
             super.onOptionsItemSelected(item)
         }
     }

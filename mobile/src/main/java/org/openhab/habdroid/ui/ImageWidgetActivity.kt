@@ -20,17 +20,17 @@ import android.util.Base64
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import com.faltenreich.skeletonlayout.Skeleton
-import com.github.chrisbanes.photoview.PhotoView
 import kotlin.math.max
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.openhab.habdroid.R
 import org.openhab.habdroid.core.connection.Connection
 import org.openhab.habdroid.core.connection.ConnectionFactory
+import org.openhab.habdroid.databinding.ActivityImageBinding
 import org.openhab.habdroid.util.HttpClient
 import org.openhab.habdroid.util.IconBackground
 import org.openhab.habdroid.util.ImageConversionPolicy
@@ -40,8 +40,7 @@ import org.openhab.habdroid.util.getIconFallbackColor
 import org.openhab.habdroid.util.orDefaultIfEmpty
 
 class ImageWidgetActivity : AbstractBaseActivity() {
-    private lateinit var imageView: PhotoView
-    private lateinit var skeleton: Skeleton
+    private lateinit var binding: ActivityImageBinding
     private var connection: Connection? = null
     private var refreshJob: Job? = null
     private var delay: Long = 0
@@ -49,15 +48,15 @@ class ImageWidgetActivity : AbstractBaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_image)
-
         supportActionBar?.title =
             intent.getStringExtra(WIDGET_LABEL).orDefaultIfEmpty(getString(R.string.widget_type_image))
 
-        imageView = findViewById(R.id.photo_view)
-        skeleton = findViewById(R.id.activity_content)
-
         delay = intent.getIntExtra(WIDGET_REFRESH, 0).toLong()
+    }
+
+    override fun inflateBinding(): CommonBinding {
+        binding = ActivityImageBinding.inflate(layoutInflater)
+        return CommonBinding(binding.root, binding.appBar, binding.coordinator, binding.skeleton)
     }
 
     override fun onResume() {
@@ -97,12 +96,14 @@ class ImageWidgetActivity : AbstractBaseActivity() {
                 finish()
                 super.onOptionsItemSelected(item)
             }
+
             R.id.refresh -> {
-                launch(Dispatchers.IO) {
+                launch {
                     loadImage()
                 }
                 true
             }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -110,56 +111,65 @@ class ImageWidgetActivity : AbstractBaseActivity() {
     private suspend fun loadImage() {
         val widgetUrl = intent.getStringExtra(WIDGET_URL)
         val conn = connection ?: return finish()
-        skeleton.showSkeleton()
-        val bitmap = if (widgetUrl != null) {
-            Log.d(TAG, "Load image from url")
-            val displayMetrics = resources.displayMetrics
-            val size = max(displayMetrics.widthPixels, displayMetrics.heightPixels)
-            try {
-                conn.httpClient
-                    .get(widgetUrl)
-                    .asBitmap(
-                        size,
-                        getIconFallbackColor(IconBackground.APP_THEME),
-                        ImageConversionPolicy.PreferTargetSize
-                    )
-                    .response
-            } catch (e: HttpClient.HttpException) {
-                Log.d(TAG, "Failed to load image", e)
-                return finish()
-            }
-        } else {
-            val link = intent.getStringExtra(WIDGET_LINK)!!
-            val widgetState = try {
-                JSONObject(
-                    conn.httpClient
-                        .get(link)
-                        .asText()
-                        .response
-                ).getString("state") ?: return finish()
-            } catch (e: HttpClient.HttpException) {
-                Log.d(TAG, "Failed to load image", e)
-                return finish()
-            }
+        binding.skeleton.showSkeleton()
 
-            if (widgetState.matches("data:image/.*;base64,.*".toRegex())) {
-                Log.d(TAG, "Load image from value")
-                val dataString = widgetState.substring(widgetState.indexOf(",") + 1)
-                val data = Base64.decode(dataString, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(data, 0, data.size)
+        val bitmap = withContext(Dispatchers.IO) {
+            if (widgetUrl != null) {
+                Log.d(TAG, "Load image from url")
+                val displayMetrics = resources.displayMetrics
+                val size = max(displayMetrics.widthPixels, displayMetrics.heightPixels)
+                try {
+                    conn.httpClient
+                        .get(widgetUrl)
+                        .asBitmap(
+                            size,
+                            getIconFallbackColor(IconBackground.APP_THEME),
+                            ImageConversionPolicy.PreferTargetSize
+                        )
+                        .response
+                } catch (e: HttpClient.HttpException) {
+                    Log.d(TAG, "Failed to load image", e)
+                    null
+                }
             } else {
-                null
+                val link = intent.getStringExtra(WIDGET_LINK)!!
+                val widgetState = try {
+                    withContext(Dispatchers.IO) {
+                        JSONObject(
+                            conn.httpClient
+                                .get(link)
+                                .asText()
+                                .response
+                        ).getString("state")
+                    }
+                } catch (e: HttpClient.HttpException) {
+                    Log.d(TAG, "Failed to load image", e)
+                    null
+                }
+
+                if (widgetState != null && widgetState.matches("data:image/.*;base64,.*".toRegex())) {
+                    Log.d(TAG, "Load image from value")
+                    val dataString = widgetState.substring(widgetState.indexOf(",") + 1)
+                    val data = Base64.decode(dataString, Base64.DEFAULT)
+                    BitmapFactory.decodeByteArray(data, 0, data.size)
+                } else {
+                    null
+                }
             }
         }
 
-        bitmap ?: return finish()
-
-        // Restore zoom after image refresh
-        val matrix = Matrix()
-        imageView.getSuppMatrix(matrix)
-        imageView.setImageBitmap(bitmap)
-        imageView.setSuppMatrix(matrix)
-        skeleton.showOriginal()
+        if (bitmap == null) {
+            finish()
+        } else {
+            // Restore zoom after image refresh
+            val matrix = Matrix()
+            binding.photoView.apply {
+                getSuppMatrix(matrix)
+                setImageBitmap(bitmap)
+                setSuppMatrix(matrix)
+            }
+            binding.skeleton.showOriginal()
+        }
     }
 
     private fun scheduleRefresh() {
@@ -172,9 +182,7 @@ class ImageWidgetActivity : AbstractBaseActivity() {
         }
     }
 
-    override fun doesLockModeRequirePrompt(mode: ScreenLockMode): Boolean {
-        return mode == ScreenLockMode.Enabled
-    }
+    override fun doesLockModeRequirePrompt(mode: ScreenLockMode): Boolean = mode == ScreenLockMode.Enabled
 
     companion object {
         private val TAG = ImageWidgetActivity::class.java.simpleName

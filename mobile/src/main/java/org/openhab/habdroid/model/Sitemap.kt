@@ -42,8 +42,11 @@ fun Node.toSitemap(): Sitemap? {
     childNodes.forEach { node ->
         when (node.nodeName) {
             "name" -> name = node.textContent
+
             "label" -> label = node.textContent
+
             "icon" -> icon = node.textContent
+
             "homepage" ->
                 node.childNodes.forEach { pageNode ->
                     if (pageNode.nodeName == "link") {
@@ -72,19 +75,17 @@ fun Document.toSitemapList(): List<Sitemap> {
     return (0 until sitemapNodes.length).mapNotNull { index -> sitemapNodes.item(index).toSitemap() }
 }
 
-fun JSONArray.toSitemapList(): List<Sitemap> {
-    return (0 until length()).mapNotNull { index ->
-        var result: Sitemap? = null
-        try {
-            val sitemap = getJSONObject(index).toSitemap()
-            if (sitemap != null && (sitemap.name != "_default" || length() == 1)) {
-                result = sitemap
-            }
-        } catch (e: JSONException) {
-            Log.d(Sitemap::class.java.simpleName, "Error while parsing sitemap", e)
+fun JSONArray.toSitemapList(): List<Sitemap> = (0 until length()).mapNotNull { index ->
+    var result: Sitemap? = null
+    try {
+        val sitemap = getJSONObject(index).toSitemap()
+        if (sitemap != null && (sitemap.name != "_default" || length() == 1)) {
+            result = sitemap
         }
-        result
+    } catch (e: JSONException) {
+        Log.d(Sitemap::class.java.simpleName, "Error while parsing sitemap", e)
     }
+    result
 }
 
 fun List<Sitemap>.sortedWithDefaultName(defaultSitemapName: String): List<Sitemap> {

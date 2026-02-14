@@ -65,6 +65,7 @@ data class Widget(
     val legend: Boolean?,
     val forceAsItem: Boolean,
     val yAxisDecimalPattern: String?,
+    val interpolation: Interpolation?,
     val switchSupport: Boolean,
     val releaseOnly: Boolean?,
     val height: Int,
@@ -99,6 +100,8 @@ data class Widget(
         }
         return InputTypeHint.Text
     }
+
+    val readOnly get() = false // TODO: Re-enable once implemented in Basic UI
 
     private val configuredMinValue get() = when {
         rawMinValue != null -> rawMinValue
@@ -147,6 +150,11 @@ data class Widget(
         Datetime
     }
 
+    enum class Interpolation {
+        Linear,
+        Step
+    }
+
     enum class LabelSource {
         Unknown,
         ItemLabel,
@@ -183,6 +191,7 @@ data class Widget(
         chartTheme?.let { chartUrl.appendQueryParameter("theme", it.toString()) }
         forcedLegend?.let { chartUrl.appendQueryParameter("legend", it) }
         yAxisDecimalPattern?.let { chartUrl.appendQueryParameter("yAxisDecimalPattern", it) }
+        interpolation?.let { chartUrl.appendQueryParameter("interpolation", it.name.lowercase()) }
 
         if (width > 0) {
             chartUrl.appendQueryParameter("w", width / resDivider)
@@ -233,6 +242,7 @@ data class Widget(
                 switchSupport = source.switchSupport,
                 releaseOnly = source.releaseOnly,
                 yAxisDecimalPattern = source.yAxisDecimalPattern,
+                interpolation = source.interpolation,
                 height = source.height,
                 visibility = eventPayload.optBoolean("visibility", source.visibility),
                 rawInputHint = source.rawInputHint
@@ -245,9 +255,11 @@ data class Widget(
 
         internal fun determineWidgetState(state: String?, item: Item?): ParsedState? = when {
             state == null -> item?.state
+
             item?.isOfTypeOrGroupType(Item.Type.Number) == true ||
                 item?.isOfTypeOrGroupType(Item.Type.NumberWithDimension) == true ->
                 state.toParsedState(item.state?.asNumber?.format)
+
             else -> state.toParsedState()
         }
     }
@@ -270,6 +282,12 @@ fun String?.toInputHint(): Widget.InputTypeHint? = this?.let { value ->
     } catch (e: IllegalArgumentException) {
         return null
     }
+}
+
+fun String?.toInterpolation(): Widget.Interpolation? = when (this) {
+    "linear" -> Widget.Interpolation.Linear
+    "step" -> Widget.Interpolation.Step
+    else -> null
 }
 
 fun String?.toLabelSource(): Widget.LabelSource = when (this) {
@@ -306,25 +324,45 @@ fun Node.collectWidgets(parent: Widget?): List<Widget> {
     childNodes.forEach { node ->
         when (node.nodeName) {
             "item" -> item = node.toItem()
+
             "linkedPage" -> linkedPage = node.toLinkedPage()
+
             "widget" -> childWidgetNodes.add(node)
+
             "type" -> type = node.textContent.toWidgetType()
+
             "widgetId" -> id = node.textContent
+
             "label" -> label = node.textContent
+
             "icon" -> icon = node.textContent
+
             "url" -> url = node.textContent
+
             "minValue" -> minValue = node.textContent.toFloat()
+
             "maxValue" -> maxValue = node.textContent.toFloat()
+
             "step" -> step = node.textContent.toFloat()
+
             "refresh" -> refresh = node.textContent.toInt()
+
             "period" -> period = node.textContent
+
             "service" -> service = node.textContent
+
             "height" -> height = node.textContent.toInt()
+
             "iconcolor" -> iconColor = node.textContent
+
             "valuecolor" -> valueColor = node.textContent
+
             "labelcolor" -> labelColor = node.textContent
+
             "encoding" -> encoding = node.textContent
+
             "switchSupport" -> switchSupport = node.textContent?.toBoolean() == true
+
             "mapping" -> {
                 var mappingCommand = ""
                 var mappingLabel = ""
@@ -336,6 +374,7 @@ fun Node.collectWidgets(parent: Widget?): List<Widget> {
                 }
                 mappings.add(LabeledValue(mappingCommand, null, mappingLabel, null, 0, 0))
             }
+
             else -> {}
         }
     }
@@ -375,6 +414,7 @@ fun Node.collectWidgets(parent: Widget?): List<Widget> {
         // forceAsItem was added in openHAB 3, so no support for openHAB 1 required.
         forceAsItem = false,
         yAxisDecimalPattern = null,
+        interpolation = null,
         switchSupport = switchSupport,
         releaseOnly = null,
         height = height,
@@ -430,6 +470,7 @@ fun JSONObject.collectWidgets(parent: Widget?): List<Widget> {
         legend = optBooleanOrNull("legend"),
         forceAsItem = optBoolean("forceAsItem", false),
         yAxisDecimalPattern = optString("yAxisDecimalPattern"),
+        interpolation = optString("interpolation").toInterpolation(),
         switchSupport = optBoolean("switchSupport", false),
         releaseOnly = optBooleanOrNull("releaseOnly"),
         height = optInt("height"),

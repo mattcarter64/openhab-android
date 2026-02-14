@@ -91,23 +91,23 @@ class ServerEditorFragment :
         deleteItem.isVisible = prefs.getConfiguredServerIds().contains(config.id)
     }
 
-    override fun onMenuItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.save -> {
-                saveAndQuit()
-                true
-            }
-            R.id.delete -> {
-                PreferencesActivity.ConfirmationDialogFragment.show(
-                    childFragmentManager,
-                    R.string.settings_server_confirm_deletion,
-                    R.string.delete,
-                    "delete_server_confirmation"
-                )
-                true
-            }
-            else -> false
+    override fun onMenuItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        R.id.save -> {
+            saveAndQuit()
+            true
         }
+
+        R.id.delete -> {
+            PreferencesActivity.ConfirmationDialogFragment.show(
+                childFragmentManager,
+                R.string.settings_server_confirm_deletion,
+                R.string.delete,
+                "delete_server_confirmation"
+            )
+            true
+        }
+
+        else -> false
     }
 
     private fun saveAndQuit() {
@@ -137,6 +137,7 @@ class ServerEditorFragment :
             }
             parentFragmentManager.popBackStack() // close ourself
         }
+
         else -> {}
     }
 
@@ -327,12 +328,16 @@ class ServerEditorFragment :
         pref.summary = when {
             path == null || path.url.isEmpty() ->
                 getString(R.string.info_not_set)
+
             path.url.toHttpUrlOrNull()?.isHttps == false ->
                 insecureMessage(beautyUrl, R.string.settings_insecure_connection_no_https)
+
             !path.hasAuthentication() && config.sslClientCert == null ->
                 insecureMessage(beautyUrl, R.string.settings_insecure_connection_no_auth)
+
             isWeakPassword(path.password) ->
                 insecureMessage(beautyUrl, R.string.settings_openhab_password_summary_weak)
+
             else ->
                 getString(R.string.settings_connection_summary, beautyUrl)
         }
